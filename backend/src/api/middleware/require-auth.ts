@@ -18,5 +18,16 @@ export const requireAuthenticatedUser = (
     return;
   }
 
+  if (!req.context.organizationId) {
+    next(
+      new AppError({
+        statusCode: 403,
+        code: "FORBIDDEN",
+        message: "Authenticated user does not have an active organization context.",
+      }),
+    );
+    return;
+  }
+
   next();
 };

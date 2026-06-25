@@ -69,6 +69,40 @@ export const assignRequestContext = (
       }
 
       req.context.user = data.user;
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("users")
+        .select("organization_id")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (membershipError) {
+        next(
+          new AppError({
+            statusCode: 403,
+            code: "FORBIDDEN",
+            message: "Unable to resolve organization context for the authenticated user.",
+            details: {
+              code: membershipError.code,
+              message: membershipError.message,
+            },
+          }),
+        );
+        return;
+      }
+
+      if (!membership?.organization_id) {
+        next(
+          new AppError({
+            statusCode: 403,
+            code: "FORBIDDEN",
+            message: "Authenticated user does not have an active organization context.",
+          }),
+        );
+        return;
+      }
+
+      req.context.organizationId = membership.organization_id;
       next();
     } catch (error) {
       next(error);

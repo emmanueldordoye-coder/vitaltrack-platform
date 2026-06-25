@@ -11,12 +11,10 @@ export const listInventoryItemsQuerySchema = z.object({
   category: z.string().trim().min(1).optional(),
   isActive: booleanQuerySchema.optional(),
   limit: limitQuerySchema,
-  organizationId: uuidSchema.optional(),
   search: z.string().trim().min(1).optional(),
 });
 
 export const createInventoryItemSchema = z.object({
-  organizationId: uuidSchema,
   sku: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(255),
   category: z.string().trim().min(1).max(100).optional(),
