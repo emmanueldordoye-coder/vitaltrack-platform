@@ -21,8 +21,8 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan(env.isProduction ? "combined" : "dev"));
-app.use(assignRequestContext);
 app.use(requestTimeout);
+app.use(assignRequestContext);
 
 app.get("/", (req, res) => {
   res.json({
