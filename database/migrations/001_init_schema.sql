@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   uom VARCHAR(50),
   reason VARCHAR(255),
   reference_number VARCHAR(100),
-  created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
   reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
   notes TEXT,
   metadata JSONB DEFAULT '{}'::jsonb,
