@@ -40,6 +40,12 @@ The backend reads the following variables:
 - `PORT` (optional, defaults to `4000`)
 - `NODE_ENV`, `API_TIMEOUT_MS`, `LOG_LEVEL` (optional)
 
+Create `backend/.env.local` from `backend/.env.example` before running locally:
+
+```bash
+cp backend/.env.example backend/.env.local
+```
+
 For authenticated route access, the Supabase project also needs the `public.users`
 table populated so the backend can resolve the caller's `organization_id` after token
 validation.
@@ -53,6 +59,9 @@ Each request gets:
 - optional authenticated user context resolved from a Bearer token
 
 Protected routes rely on the caller's Supabase access token so database queries execute under Supabase Auth and row-level security policies.
+
+For frontend integration, set `CORS_ALLOWED_ORIGINS` to include your frontend
+origin (for example `http://localhost:3000`).
 
 ## API response contract
 
@@ -114,6 +123,7 @@ npm run dev
 
 # from repo root/
 npm run dev --workspace=backend
+npm run dev:backend
 ```
 
 The backend defaults to port `4000`, serves API routes under `/api/v1`, and expects a
