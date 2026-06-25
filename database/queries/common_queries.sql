@@ -78,10 +78,11 @@ SELECT
   AVG(CASE WHEN sm.movement_type = 'consume' THEN sm.quantity ELSE NULL END) as avg_consumption_per_movement,
   ROUND((SUM(CASE WHEN sm.movement_type = 'consume' THEN sm.quantity ELSE 0 END)::numeric / 30), 2) as daily_consumption_rate
 FROM inventory_items ii
+JOIN facilities f ON ii.organization_id = f.organization_id
 LEFT JOIN stock_movements sm ON ii.id = sm.inventory_item_id
+  AND sm.facility_id = f.id
   AND sm.created_at >= CURRENT_DATE - INTERVAL '30 days'
   AND sm.movement_type = 'consume'
-JOIN facilities f ON ii.organization_id = f.organization_id
 WHERE ii.organization_id = $1
 GROUP BY ii.id, ii.sku, ii.name, ii.category, f.id, f.name
 HAVING SUM(CASE WHEN sm.movement_type = 'consume' THEN sm.quantity ELSE 0 END) > 0
