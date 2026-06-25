@@ -114,25 +114,26 @@ vitaltrack-platform/
    npm install
    ```
 
-3. **Setup environment variables**
+3. **Set up environment variables**
    ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your configuration
+   cp frontend/.env.example frontend/.env.local
+   cp backend/.env.example backend/.env.local
+   # Fill in Supabase URL/key values in both files.
+   # Use .env.example at the repo root as the shared reference.
    ```
 
-4. **Setup database**
-   ```bash
-   npm run db:setup
-   npm run db:migrate
-   npm run db:seed
-   ```
-
-5. **Start development server**
+4. **Start frontend + backend**
    ```bash
    npm run dev
    ```
 
-   The application will be available at `http://localhost:3000`
+   - Frontend: `http://localhost:3000`
+   - Backend API: `http://localhost:4000/api/v1`
+
+5. **Auth flow expectations**
+   - Frontend signs users in with Supabase Auth.
+   - Frontend calls backend with `Authorization: Bearer <supabase-access-token>`.
+   - Backend validates token context and enforces organization-scoped access.
 
 ## Development
 
@@ -140,32 +141,20 @@ vitaltrack-platform/
 
 ```bash
 # Development
-npm run dev              # Start development server
-npm run build            # Build for production
-npm run start            # Start production server
+npm run dev                    # Run backend + frontend together
+npm run dev:backend            # Run backend only
+npm run dev:frontend           # Run frontend only
 
-# Testing
-npm run test             # Run unit tests
-npm run test:watch       # Run tests in watch mode
-npm run test:coverage    # Generate coverage report
-npm run e2e              # Run end-to-end tests
-npm run e2e:ui           # Run e2e tests with UI
+# Build / quality (both workspaces)
+npm run build
+npm run lint
+npm run type-check
+npm run test
 
-# Linting & Formatting
-npm run lint             # Run ESLint
-npm run lint:fix         # Fix linting errors
-npm run format           # Format code with Prettier
-npm run type-check       # Run TypeScript type checking
-
-# Database
-npm run db:migrate       # Run pending migrations
-npm run db:seed          # Seed database with test data
-npm run db:reset         # Reset database
-npm run db:studio        # Open Supabase studio
-
-# Deployment
-npm run deploy           # Deploy to production
-npm run deploy:staging   # Deploy to staging
+# CI-equivalent checks
+npm run ci:frontend
+npm run ci:backend
+npm run ci
 ```
 
 ## Contributing

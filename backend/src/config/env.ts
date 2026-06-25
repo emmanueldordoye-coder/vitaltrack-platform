@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
+loadEnv({ path: ".env.local" });
 loadEnv();
 
 const envSchema = z.object({

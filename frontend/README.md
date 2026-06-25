@@ -28,9 +28,11 @@ Next.js App Router frontend for VitalTrack, aligned to the backend API contract 
 
 ## Required environment variables
 
-Create `frontend/.env.local`:
+Create `frontend/.env.local` from `frontend/.env.example`:
 
 ```bash
+cp frontend/.env.example frontend/.env.local
+
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
@@ -41,13 +43,17 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/api/v1
 API_BASE_URL=http://localhost:4000/api/v1
 ```
 
+The frontend authenticates users with Supabase and forwards the current Supabase
+access token as a Bearer token when calling protected backend routes.
+
 ## Run locally
 
 From repository root:
 
 ```bash
 npm install
-npm run dev --workspace=frontend
+npm run dev:frontend
+npm run dev                # runs backend + frontend together
 ```
 
 Or from `frontend/`:
