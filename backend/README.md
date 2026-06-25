@@ -1,215 +1,144 @@
-# Backend
+# Backend API
 
-Backend services, utilities, and Next.js API routes for VitalTrack.
+Minimal Express + Supabase foundation for the VitalTrack backend.
 
 ## Structure
 
-```
+```text
 backend/
 ├── src/
 │   ├── api/
-│   │   ├── routes/       # API route handlers
-│   │   │   ├── auth.ts
-│   │   │   ├── inventory.ts
-│   │   │   ├── orders.ts
-│   │   │   ├── facilities.ts
-│   │   │   ├── users.ts
-│   │   │   └── reports.ts
-│   │   ├── middleware/   # Express/API middleware
-│   │   │   ├── auth.ts
-│   │   │   ├── errorHandler.ts
-│   │   │   ├── rateLimit.ts
-│   │   │   └── requestLogger.ts
-│   │   └── validators/   # Request validation
-│   │       ├── inventory.ts
-│   │       ├── orders.ts
-│   │       └── users.ts
-│   ├── services/        # Business logic
-│   │   ├── auth/
-│   │   │   ├── AuthService.ts
-│   │   │   ├── JwtService.ts
-│   │   │   └── PasswordService.ts
-│   │   ├── inventory/
-│   │   │   ├── InventoryService.ts
-│   │   │   ├── StockLevelService.ts
-│   │   │   └── ReorderService.ts
-│   │   ├── order/
-│   │   │   ├── OrderService.ts
-│   │   │   └── PurchaseOrderService.ts
-│   │   ├── user/
-│   │   │   ├── UserService.ts
-│   │   │   └── PermissionService.ts
-│   │   ├── notification/
-│   │   │   ├── NotificationService.ts
-│   │   │   └── EmailService.ts
-│   │   └── report/
-│   │       ├── ReportService.ts
-│   │       └── AnalyticsService.ts
-│   ├── models/          # Data models
-│   │   ├── Inventory.ts
-│   │   ├── Order.ts
-│   │   ├── User.ts
-│   │   ├── Facility.ts
-│   │   └── StockLevel.ts
-│   ├── utils/           # Utility functions
-│   │   ├── logger.ts
-│   │   ├── errorHandler.ts
-│   │   ├── validators.ts
-│   │   └── helpers.ts
-│   ├── config/          # Configuration
-│   │   ├── constants.ts
+│   │   ├── middleware/    # Request context, auth, validation, errors
+│   │   ├── routes/        # Versioned API routes
+│   │   ├── schemas/       # Zod request schemas
+│   │   ├── errors.ts
+│   │   ├── response.ts
+│   │   └── supabase-errors.ts
+│   ├── config/
 │   │   ├── env.ts
-│   │   └── database.ts
-│   └── types/           # TypeScript types
-│       └── index.ts
-├── tests/               # Backend tests (also in /tests directory)
+│   │   └── supabase.ts
+│   ├── types/
+│   │   ├── api.ts
+│   │   ├── database.ts
+│   │   └── express.d.ts
+│   ├── app.ts
+│   └── server.ts
+├── tests/
+│   └── api.integration.test.ts
 ├── .eslintrc.json
-├── tsconfig.json
 ├── package.json
-└── README.md
+└── tsconfig.json
 ```
 
-## Key Technologies
+## Environment
 
-- **Node.js 18+** - Runtime
-- **TypeScript** - Type safety
-- **Express** - Web framework (if needed alongside Next.js)
-- **Zod** - Schema validation
-- **Winston** - Logging
-- **Jest** - Testing
+The backend reads the following variables:
 
-## Services
+- `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `CORS_ALLOWED_ORIGINS` (comma-separated, required in production)
+- `PORT` (optional, defaults to `4000`)
+- `NODE_ENV`, `API_TIMEOUT_MS`, `LOG_LEVEL` (optional)
 
-### AuthService
-- User authentication
-- Token management
-- Password hashing
+Create `backend/.env.local` from `backend/.env.example` before running locally:
 
-### InventoryService
-- Inventory CRUD operations
-- Stock level calculations
-- Item tracking
+```bash
+cp backend/.env.example backend/.env.local
+```
 
-### OrderService
-- Purchase order creation and management
-- Reorder automation
-- Supplier integration
+For authenticated route access, the Supabase project also needs the `public.users`
+table populated so the backend can resolve the caller's `organization_id` after token
+validation.
 
-### UserService
-- User management
-- Permission handling
-- Role assignment
+## Request context and auth
 
-### NotificationService
-- Email notifications
-- Alert dispatching
-- Webhook handling
+Each request gets:
 
-### ReportService
-- Report generation
-- Analytics computation
-- Data aggregation
+- a request ID for traceable responses
+- a request-scoped Supabase client
+- optional authenticated user context resolved from a Bearer token
 
-## API Standards
+Protected routes rely on the caller's Supabase access token so database queries execute under Supabase Auth and row-level security policies.
 
-### Request/Response Format
+For frontend integration, set `CORS_ALLOWED_ORIGINS` to include your frontend
+origin (for example `http://localhost:3000`).
 
-```typescript
-// Request
-{
-  "facilityId": "string",
-  "itemId": "string",
-  "quantity": number
-}
+## API response contract
 
-// Success Response
+Successful responses:
+
+```json
 {
   "success": true,
-  "data": { ... },
+  "data": {},
   "meta": {
-    "timestamp": "2026-06-25T14:50:48Z",
+    "requestId": "uuid",
+    "timestamp": "2026-06-25T18:00:00.000Z",
     "version": "v1"
   }
 }
+```
 
-// Error Response
+Error responses:
+
+```json
 {
   "success": false,
   "error": {
-    "code": "ERROR_CODE",
-    "message": "Human readable message",
-    "details": { ... }
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed.",
+    "details": []
+  },
+  "meta": {
+    "requestId": "uuid",
+    "timestamp": "2026-06-25T18:00:00.000Z",
+    "version": "v1"
   }
 }
 ```
 
-### Error Codes
+## Sample endpoints
 
-- `AUTH_FAILED` - Authentication failed
-- `UNAUTHORIZED` - User not authorized
-- `NOT_FOUND` - Resource not found
-- `VALIDATION_ERROR` - Request validation failed
-- `CONFLICT` - Resource conflict
-- `SERVER_ERROR` - Internal server error
+All application routes are mounted under `/api/v1`.
 
-## Authentication
+- `GET /health`
+- `GET /facilities`
+- `GET /facilities/:id`
+- `POST /facilities`
+- `GET /inventory`
+- `GET /inventory/:id`
+- `POST /inventory`
+- `GET /purchase-orders`
+- `GET /purchase-orders/:id`
+- `POST /purchase-orders`
 
-- JWT-based authentication
-- Supabase Auth integration
-- Role-based access control (RBAC)
-- Token refresh mechanism
+`/facilities`, `/inventory`, and `/purchase-orders` require a valid `Authorization: Bearer <supabase-access-token>` header.
 
-## Database Access
-
-Uses Supabase client for database operations.
-
-```typescript
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(url, key);
-const { data, error } = await supabase
-  .from('inventory')
-  .select('*')
-  .eq('facility_id', facilityId);
-```
-
-## Logging
-
-Structured logging with Winston:
-
-```typescript
-logger.info('Inventory updated', {
-  inventoryId: 'inv-123',
-  quantity: 100,
-  userId: 'user-456'
-});
-```
-
-## Error Handling
-
-Centralized error handling:
-
-```typescript
-try {
-  // operation
-} catch (error) {
-  handleError(error, {
-    context: 'UpdateInventory',
-    userId: req.user.id
-  });
-}
-```
-
-## Development
+## Running locally
 
 ```bash
-npm run dev              # Development server
-npm run build            # Build
-npm run start            # Production server
-npm run test             # Tests
-npm run lint             # Linting
+# from backend/
+npm install
+npm run dev
+
+# from repo root/
+npm run dev --workspace=backend
+npm run dev:backend
 ```
 
-## Deployment
+The backend defaults to port `4000`, serves API routes under `/api/v1`, and expects a
+working Supabase project URL plus anon key in the environment.
 
-See main README for deployment instructions.
+## Running tests
+
+```bash
+# from backend/
+npm test
+
+# from repo root/
+npm test --workspace=backend
+```
+
+The integration tests stub the request context and Supabase data layer, so they do not
+require a live Supabase project. Local development and manual API smoke tests still need
+valid Supabase credentials and a user record in `public.users`.

@@ -1,169 +1,84 @@
-# Frontend
+# VitalTrack Frontend Foundation
 
-Next.js-based React frontend application for VitalTrack.
+Next.js App Router frontend for VitalTrack, aligned to the backend API contract under `/api/v1`.
 
-## Structure
+## Implemented foundation
 
-```
-frontend/
-├── public/                 # Static assets (images, icons, fonts)
-├── src/
-│   ├── app/               # Next.js App Router
-│   │   ├── layout.tsx     # Root layout
-│   │   ├── page.tsx       # Homepage
-│   │   ├── (auth)/        # Auth routes (login, signup, reset)
-│   │   ├── (dashboard)/   # Dashboard routes
-│   │   │   ├── inventory/ # Inventory management
-│   │   │   ├── orders/    # Order management
-│   │   │   ├── reports/   # Reporting
-│   │   │   ├── settings/  # Settings
-│   │   │   └── layout.tsx # Dashboard layout
-│   │   └── api/           # API routes
-│   ├── components/
-│   │   ├── common/        # Reusable components (Button, Card, Modal, etc.)
-│   │   ├── inventory/     # Inventory-specific components
-│   │   ├── orders/        # Order-specific components
-│   │   ├── reports/       # Report-specific components
-│   │   └── layouts/       # Layout components
-│   ├── hooks/             # Custom React hooks
-│   │   ├── useInventory.ts
-│   │   ├── useAuth.ts
-│   │   └── useNotification.ts
-│   ├── lib/               # Utility functions
-│   │   ├── api.ts         # API client
-│   │   ├── db.ts          # Supabase client
-│   │   ├── auth.ts        # Auth utilities
-│   │   └── utils.ts       # Helper functions
-│   ├── types/             # TypeScript types
-│   │   ├── index.ts
-│   │   ├── inventory.ts
-│   │   ├── order.ts
-│   │   └── user.ts
-│   ├── styles/
-│   │   ├── globals.css    # Global styles
-│   │   └── components/    # Component-specific CSS modules
-│   └── middleware.ts      # Next.js middleware
-├── .eslintrc.json         # ESLint configuration
-├── .prettierrc             # Prettier configuration
-├── tsconfig.json          # TypeScript configuration
-├── next.config.js         # Next.js configuration
-├── tailwind.config.ts     # Tailwind CSS configuration
-├── package.json
-└── README.md
+- Route groups:
+  - `(auth)` for sign-in flow
+  - `(app)` for protected dashboard, facilities, inventory, and purchase orders
+- Supabase-authenticated session handling:
+  - Server + browser Supabase clients
+  - Middleware route protection and auth redirects
+  - Sign-in and sign-out server actions
+- Tailwind UI scaffolding:
+  - Root layout and app shell with navigation
+  - Dashboard stat cards
+  - Facilities and inventory tables with creation forms
+- Typed API client layer for:
+  - `facilities`
+  - `inventory`
+  - `purchase-orders`
+- Zod validation for initial forms:
+  - Sign in
+  - Create facility
+  - Create inventory item
+- Backend-aligned TypeScript contracts in `src/types/contracts.ts`
+- Jest-based tests for validation, API client behavior, and a UI component
+
+## Required environment variables
+
+Create `frontend/.env.local` from `frontend/.env.example`:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Backend API base URL (includes /api/v1 path)
+NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/api/v1
+
+# Optional server-only override for server components/actions
+API_BASE_URL=http://localhost:4000/api/v1
 ```
 
-## Key Technologies
+The frontend authenticates users with Supabase and forwards the current Supabase
+access token as a Bearer token when calling protected backend routes.
 
-- **Next.js 14+** - React framework with SSR
-- **React 18+** - UI library
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **TanStack Query** - State management for async data
-- **Zustand** - Client state management
-- **React Hook Form** - Form state management
-- **Zod** - Schema validation
-- **Jest** - Unit testing
-- **Playwright** - E2E testing
+## Run locally
 
-## Development
+From repository root:
 
-### Setup
+```bash
+npm install
+npm run dev:frontend
+npm run dev                # runs backend + frontend together
+```
+
+Or from `frontend/`:
+
 ```bash
 npm install
 npm run dev
 ```
 
-### Building
+## Build, lint, type-check, test
+
+From repository root:
+
+```bash
+npm run build --workspace=frontend
+npm run lint --workspace=frontend
+npm run type-check --workspace=frontend
+npm run test --workspace=frontend
+```
+
+From `frontend/`:
+
 ```bash
 npm run build
-npm run start
-```
-
-### Testing
-```bash
-npm run test              # Unit tests
-npm run test:watch       # Watch mode
-npm run test:coverage    # Coverage report
-npm run e2e              # E2E tests
-```
-
-### Linting
-```bash
 npm run lint
-npm run lint:fix
-npm run format
 npm run type-check
+npm run test
 ```
-
-## Standards
-
-### Component Structure
-
-```typescript
-// ✅ Good component pattern
-import React from 'react';
-import { cn } from '@/lib/utils';
-
-export interface InventoryCardProps {
-  id: string;
-  name: string;
-  quantity: number;
-  onUpdate?: () => void;
-}
-
-export function InventoryCard({
-  id,
-  name,
-  quantity,
-  onUpdate,
-}: InventoryCardProps) {
-  return (
-    <div className={cn('p-4 bg-white rounded-lg shadow')}>
-      <h3>{name}</h3>
-      <p>{quantity} units</p>
-    </div>
-  );
-}
-
-export default InventoryCard;
-```
-
-### Hook Pattern
-
-```typescript
-// ✅ Good hook pattern
-import { useQuery } from '@tanstack/react-query';
-import { fetchInventoryItem } from '@/lib/api';
-
-export function useInventoryItem(id: string) {
-  return useQuery({
-    queryKey: ['inventory', id],
-    queryFn: () => fetchInventoryItem(id),
-  });
-}
-```
-
-## Build Output
-
-Production build output goes to `.next/` directory.
-
-Size budget:
-- Main bundle: <500KB (gzipped)
-- Page bundles: <200KB each
-- Images: Optimized with Next.js Image component
-
-## Performance
-
-- Core Web Vitals targets:
-  - LCP: <2.5s
-  - FID: <100ms
-  - CLS: <0.1
-- Code splitting enabled
-- CSS-in-JS optimized
-- Image optimization
-
-## Deployment
-
-Built for Vercel but can be deployed anywhere Node.js is supported.
-
-See main README for deployment instructions.
