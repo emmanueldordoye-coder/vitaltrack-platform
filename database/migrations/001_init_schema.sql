@@ -515,7 +515,10 @@ CREATE POLICY reorder_rules_own_org
 CREATE POLICY organizations_admin_only
   ON organizations
   FOR ALL
-  USING (auth.current_user_role() = 'admin');
+  USING (
+    auth.current_user_role() = 'admin'
+    AND id = auth.current_user_organization_id()
+  );
 
 -- ============================================================================
 -- Triggers (Automatic Timestamp Updates)
