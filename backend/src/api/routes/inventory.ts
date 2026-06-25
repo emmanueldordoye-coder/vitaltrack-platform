@@ -23,7 +23,7 @@ inventoryRouter.get(
   "/",
   validate({ query: listInventoryItemsQuerySchema }),
   handleRoute(async (req, res) => {
-    const { category, isActive, limit, organizationId, search } =
+    const { category, isActive, limit, search } =
       req.context.validated?.query as InventoryQuery;
 
     let query = req.context.supabase
@@ -31,10 +31,6 @@ inventoryRouter.get(
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
-
-    if (organizationId) {
-      query = query.eq("organization_id", organizationId);
-    }
 
     if (category) {
       query = query.eq("category", category);
@@ -93,7 +89,7 @@ inventoryRouter.post(
     const body = req.context.validated?.body as CreateInventoryItemInput;
 
     const payload: TableInsert<"inventory_items"> = {
-      organization_id: body.organizationId,
+      organization_id: req.context.organizationId!,
       sku: body.sku,
       name: body.name,
       category: body.category ?? null,

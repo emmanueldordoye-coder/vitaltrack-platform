@@ -12,11 +12,9 @@ export const listFacilitiesQuerySchema = z.object({
   facilityType: z.string().trim().min(1).optional(),
   isActive: booleanQuerySchema.optional(),
   limit: limitQuerySchema,
-  organizationId: uuidSchema.optional(),
 });
 
 export const createFacilitySchema = z.object({
-  organizationId: uuidSchema,
   name: z.string().trim().min(1).max(255),
   facilityType: z.string().trim().min(1).max(50).optional(),
   address: z.string().trim().min(1).optional(),

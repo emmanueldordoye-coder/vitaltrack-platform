@@ -9,6 +9,38 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      users: {
+        Row: {
+          id: string;
+          organization_id: string;
+          email: string;
+          full_name: string | null;
+          role: string;
+          is_active: boolean | null;
+          phone: string | null;
+          avatar_url: string | null;
+          preferences: Json | null;
+          last_login: string | null;
+          last_seen: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id: string;
+          organization_id: string;
+          email: string;
+          full_name?: string | null;
+          role?: string;
+          is_active?: boolean | null;
+          phone?: string | null;
+          avatar_url?: string | null;
+          preferences?: Json | null;
+          last_login?: string | null;
+          last_seen?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>;
+        Relationships: [];
+      };
       facilities: {
         Row: {
           id: string;

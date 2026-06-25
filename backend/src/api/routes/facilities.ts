@@ -20,7 +20,7 @@ facilitiesRouter.get(
   "/",
   validate({ query: listFacilitiesQuerySchema }),
   handleRoute(async (req, res) => {
-    const { city, facilityType, isActive, limit, organizationId } =
+    const { city, facilityType, isActive, limit } =
       req.context.validated?.query as FacilitiesQuery;
 
     let query = req.context.supabase
@@ -28,10 +28,6 @@ facilitiesRouter.get(
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
-
-    if (organizationId) {
-      query = query.eq("organization_id", organizationId);
-    }
 
     if (facilityType) {
       query = query.eq("facility_type", facilityType);
@@ -90,7 +86,7 @@ facilitiesRouter.post(
     const body = req.context.validated?.body as CreateFacilityInput;
 
     const payload: TableInsert<"facilities"> = {
-      organization_id: body.organizationId,
+      organization_id: req.context.organizationId!,
       name: body.name,
       facility_type: body.facilityType ?? null,
       address: body.address ?? null,

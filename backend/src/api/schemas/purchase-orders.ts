@@ -37,6 +37,4 @@ export const createPurchaseOrderSchema = z.object({
   totalAmount: z.number().nonnegative().optional(),
   currency: z.string().trim().length(3).default("USD"),
   notes: z.string().trim().min(1).optional(),
-  createdBy: uuidSchema.optional(),
-  updatedBy: uuidSchema.optional(),
 });

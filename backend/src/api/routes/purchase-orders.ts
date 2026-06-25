@@ -116,8 +116,8 @@ purchaseOrdersRouter.post(
       total_amount: body.totalAmount ?? null,
       currency: body.currency.toUpperCase(),
       notes: body.notes ?? null,
-      created_by: body.createdBy ?? req.context.user?.id ?? null,
-      updated_by: body.updatedBy ?? req.context.user?.id ?? null,
+      created_by: req.context.user?.id ?? null,
+      updated_by: req.context.user?.id ?? null,
     };
 
     const { data: createdOrder, error: purchaseOrderError } = await req.context.supabase

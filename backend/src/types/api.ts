@@ -30,6 +30,7 @@ export interface RequestContext {
   requestId: string;
   accessToken?: string;
   user?: User;
+  organizationId?: string;
   supabase: SupabaseClient<Database>;
   validated?: {
     body?: unknown;

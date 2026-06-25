@@ -23,6 +23,8 @@ backend/
 │   │   └── express.d.ts
 │   ├── app.ts
 │   └── server.ts
+├── tests/
+│   └── api.integration.test.ts
 ├── .eslintrc.json
 ├── package.json
 └── tsconfig.json
@@ -37,6 +39,10 @@ The backend reads the following variables:
 - `CORS_ALLOWED_ORIGINS` (comma-separated, required in production)
 - `PORT` (optional, defaults to `4000`)
 - `NODE_ENV`, `API_TIMEOUT_MS`, `LOG_LEVEL` (optional)
+
+For authenticated route access, the Supabase project also needs the `public.users`
+table populated so the backend can resolve the caller's `organization_id` after token
+validation.
 
 ## Request context and auth
 
@@ -98,3 +104,31 @@ All application routes are mounted under `/api/v1`.
 - `POST /purchase-orders`
 
 `/facilities`, `/inventory`, and `/purchase-orders` require a valid `Authorization: Bearer <supabase-access-token>` header.
+
+## Running locally
+
+```bash
+# from backend/
+npm install
+npm run dev
+
+# from repo root/
+npm run dev --workspace=backend
+```
+
+The backend defaults to port `4000`, serves API routes under `/api/v1`, and expects a
+working Supabase project URL plus anon key in the environment.
+
+## Running tests
+
+```bash
+# from backend/
+npm test
+
+# from repo root/
+npm test --workspace=backend
+```
+
+The integration tests stub the request context and Supabase data layer, so they do not
+require a live Supabase project. Local development and manual API smoke tests still need
+valid Supabase credentials and a user record in `public.users`.
