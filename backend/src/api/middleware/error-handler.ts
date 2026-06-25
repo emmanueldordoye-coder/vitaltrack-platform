@@ -33,6 +33,23 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     return;
   }
 
+  // Handle errors produced by Express body-parser middleware (e.g. malformed
+  // JSON → 400, payload too large → 413).  These carry a `status` or
+  // `statusCode` field set by Express/body-parser itself.
+  const parserStatus =
+    (error as { status?: number; statusCode?: number }).status ??
+    (error as { status?: number; statusCode?: number }).statusCode;
+
+  if (parserStatus && parserStatus >= 400 && parserStatus < 500) {
+    sendError(req, res, {
+      statusCode: parserStatus,
+      code: "BAD_REQUEST",
+      message:
+        error instanceof Error ? error.message : "Invalid request.",
+    });
+    return;
+  }
+
   sendError(req, res, {
     statusCode: 500,
     code: "SERVER_ERROR",
