@@ -117,7 +117,9 @@ alter table inventory_items enable row level security;
 create policy "Users can view own org data"
 on inventory_items for select
 using (
-  organization_id = auth.uid()
+  organization_id IN (
+    SELECT organization_id FROM users WHERE id = auth.uid()
+  )
 );
 
 -- Only admins can delete

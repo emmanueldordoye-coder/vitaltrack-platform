@@ -1,0 +1,24 @@
+{
+  "name": "vitaltrack-platform",
+  "version": "0.1.0",
+  "description": "VitalTrack Platform - Health monitoring and tracking system",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
+    "start": "npm start --workspace=backend",
+    "test": "npm test --workspace=frontend && npm test --workspace=backend",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
+    "format": "npm run format --workspace=frontend && npm run format --workspace=backend",
+    "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend"
+  },
+  "keywords": [
+    "health",
+    "monitoring",
+    "tracking"
+  ],
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
