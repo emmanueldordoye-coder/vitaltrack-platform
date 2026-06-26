@@ -15,7 +15,10 @@
     "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend",
     "ci:frontend": "npm run lint --workspace=frontend && npm run type-check --workspace=frontend && npm run test --workspace=frontend --if-present",
     "ci:backend": "npm run lint --workspace=backend && npm run type-check --workspace=backend && npm run test --workspace=backend --if-present",
-    "ci": "npm run ci:frontend && npm run ci:backend"
+    "ci": "npm run ci:frontend && npm run ci:backend",
+    "deploy:staging": "./scripts/deploy/deploy-staging.sh",
+    "deploy:production": "./scripts/deploy/deploy-production.sh",
+    "smoke:test": "./scripts/deploy/smoke-tests.sh"
   },
   "keywords": [
     "health",

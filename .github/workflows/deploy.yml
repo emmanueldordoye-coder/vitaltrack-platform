@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Deploy to staging
+        if: inputs.environment == 'staging'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+          APP_BASE_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          API_BASE_URL: ${{ secrets.STAGING_BACKEND_URL }}
+          HEALTHCHECK_BEARER_TOKEN: ${{ secrets.STAGING_SMOKE_TEST_TOKEN }}
+        run: ./scripts/deploy/deploy-staging.sh
+
+      - name: Deploy to production
+        if: inputs.environment == 'production'
+        env:
+          CONFIRM_PRODUCTION_DEPLOY: "true"
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PRODUCTION_DEPLOY_HOOK_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          APP_BASE_URL: ${{ secrets.PRODUCTION_FRONTEND_URL }}
+          API_BASE_URL: ${{ secrets.PRODUCTION_BACKEND_URL }}
+          HEALTHCHECK_BEARER_TOKEN: ${{ secrets.PRODUCTION_SMOKE_TEST_TOKEN }}
+        run: ./scripts/deploy/deploy-production.sh
