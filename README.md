@@ -157,6 +157,24 @@ npm run ci:backend
 npm run ci
 ```
 
+## Deployment
+
+Deployment target is **Vercel (frontend) + Render (backend) + Supabase (database)**.
+
+```bash
+# Deploy to staging
+npm run deploy:staging
+
+# Deploy to production (requires CONFIRM_PRODUCTION_DEPLOY=true)
+npm run deploy:production
+
+# Run smoke checks
+npm run smoke:test
+```
+
+- GitHub Actions deploy workflow: `.github/workflows/deploy.yml`
+- Deployment runbook: `docs/operations/deployment.md`
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines, code standards, and the pull request process.
