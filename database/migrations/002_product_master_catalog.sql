@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS categories (
   CONSTRAINT categories_parent_fk
     FOREIGN KEY (parent_category_id, organization_id)
     REFERENCES categories(id, organization_id)
-    ON DELETE RESTRICT
+    ON DELETE NO ACTION DEFERRABLE INITIALLY IMMEDIATE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_org_root_name
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS units_of_measure (
   CONSTRAINT units_of_measure_base_fk
     FOREIGN KEY (base_unit_id, organization_id)
     REFERENCES units_of_measure(id, organization_id)
-    ON DELETE RESTRICT
+    ON DELETE NO ACTION DEFERRABLE INITIALLY IMMEDIATE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_units_of_measure_org_name
@@ -211,15 +211,15 @@ CREATE TABLE IF NOT EXISTS products (
   CONSTRAINT products_category_fk
     FOREIGN KEY (category_id, organization_id)
     REFERENCES categories(id, organization_id)
-    ON DELETE RESTRICT,
+    ON DELETE NO ACTION DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT products_manufacturer_fk
     FOREIGN KEY (manufacturer_id, organization_id)
     REFERENCES manufacturers(id, organization_id)
-    ON DELETE RESTRICT,
+    ON DELETE NO ACTION DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT products_unit_of_measure_fk
     FOREIGN KEY (unit_of_measure_id, organization_id)
     REFERENCES units_of_measure(id, organization_id)
-    ON DELETE RESTRICT
+    ON DELETE NO ACTION DEFERRABLE INITIALLY IMMEDIATE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_org_gtin
