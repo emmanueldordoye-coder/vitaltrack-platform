@@ -182,3 +182,110 @@ export interface SessionUser {
   user: User;
   accessToken: string;
 }
+
+// ─── Catalog / Stock ──────────────────────────────────────────────────────────
+
+export interface StockLevel {
+  inventory_item_id: string;
+  available_quantity: number | null;
+  reorder_level: number | null;
+  min_level: number | null;
+  max_level: number | null;
+  reorder_quantity: number | null;
+}
+
+/** InventoryItem enriched with stock-level data and a computed status badge. */
+export interface CatalogItem extends InventoryItem {
+  supplier: { id: string; name: string } | null;
+  stock_level: StockLevel | null;
+  stock_status: "ok" | "low" | "critical" | "unknown";
+}
+
+export interface ListCatalogQuery {
+  facilityId?: string;
+  search?: string;
+  category?: string;
+  isActive?: boolean;
+  limit?: number;
+}
+
+// ─── Suggested Orders ─────────────────────────────────────────────────────────
+
+export type SuggestedOrderStatus =
+  | "pending_review"
+  | "approved"
+  | "submitted"
+  | "rejected";
+
+export interface SuggestedOrder {
+  id: string;
+  organization_id: string;
+  facility_id: string;
+  supplier_id: string | null;
+  supplier: { id: string; name: string } | null;
+  status: SuggestedOrderStatus;
+  total_estimated_cost: number | null;
+  generated_at: string;
+  approved_at: string | null;
+  submitted_at: string | null;
+  approved_by: string | null;
+  purchase_order_id: string | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SuggestedOrderItem {
+  id: string;
+  suggested_order_id: string;
+  inventory_item_id: string;
+  inventory_item: Pick<
+    InventoryItem,
+    "id" | "sku" | "name" | "category" | "uom" | "unit_cost"
+  > | null;
+  quantity_suggested: number;
+  quantity_approved: number | null;
+  unit_price: number | null;
+  line_total: number | null;
+  uom: string | null;
+  notes: string | null;
+}
+
+export interface SuggestedOrderSupplier {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
+export type SuggestedOrderDetail = SuggestedOrder & {
+  supplier: SuggestedOrderSupplier | null;
+  items: SuggestedOrderItem[];
+};
+
+export interface ListSuggestedOrdersQuery {
+  facilityId?: string;
+  status?: SuggestedOrderStatus;
+  limit?: number;
+}
+
+export interface GenerateSuggestedOrderInput {
+  facilityId: string;
+  notes?: string;
+}
+
+/** Returned by POST /suggested-orders/:id/approve */
+export interface OrderConfirmation {
+  suggestedOrderId: string;
+  purchaseOrderId: string;
+  poNumber: string;
+  supplierRef: string;
+  status: "submitted";
+  totalAmount: number;
+  currency: string;
+  itemCount: number;
+  supplierId: string | null;
+  submittedAt: string;
+  estimatedDeliveryDays: number;
+  estimatedDeliveryDate: string | null;
+}

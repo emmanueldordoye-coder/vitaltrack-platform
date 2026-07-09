@@ -236,6 +236,67 @@ export interface Database {
         Relationships: [];
       };
     };
+      suggested_orders: {
+        Row: {
+          id: string;
+          organization_id: string;
+          facility_id: string;
+          supplier_id: string | null;
+          status: "pending_review" | "approved" | "submitted" | "rejected";
+          total_estimated_cost: number | null;
+          generated_at: string;
+          approved_at: string | null;
+          submitted_at: string | null;
+          approved_by: string | null;
+          purchase_order_id: string | null;
+          notes: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          facility_id: string;
+          supplier_id?: string | null;
+          status?: "pending_review" | "approved" | "submitted" | "rejected";
+          total_estimated_cost?: number | null;
+          generated_at?: string;
+          approved_at?: string | null;
+          submitted_at?: string | null;
+          approved_by?: string | null;
+          purchase_order_id?: string | null;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["suggested_orders"]["Insert"]>;
+        Relationships: [];
+      };
+      suggested_order_items: {
+        Row: {
+          id: string;
+          suggested_order_id: string;
+          inventory_item_id: string;
+          quantity_suggested: number;
+          quantity_approved: number | null;
+          unit_price: number | null;
+          line_total: number | null;
+          uom: string | null;
+          notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          suggested_order_id: string;
+          inventory_item_id: string;
+          quantity_suggested: number;
+          quantity_approved?: number | null;
+          unit_price?: number | null;
+          line_total?: number | null;
+          uom?: string | null;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["suggested_order_items"]["Insert"]>;
+        Relationships: [];
+      };
+    };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;

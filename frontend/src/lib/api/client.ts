@@ -2,16 +2,23 @@ import { env } from "@/lib/env";
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
+  CatalogItem,
   CreateFacilityInput,
   CreateInventoryItemInput,
   CreatePurchaseOrderInput,
   Facility,
+  GenerateSuggestedOrderInput,
   InventoryItem,
+  ListCatalogQuery,
   ListFacilitiesQuery,
   ListInventoryQuery,
   ListPurchaseOrdersQuery,
+  ListSuggestedOrdersQuery,
+  OrderConfirmation,
   PurchaseOrder,
   PurchaseOrderDetail,
+  SuggestedOrder,
+  SuggestedOrderDetail,
 } from "@/types/contracts";
 
 type Primitive = string | number | boolean;
@@ -69,7 +76,7 @@ export class VitalTrackApiClient {
     body,
   }: {
     path: string;
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "PATCH";
     query?: Record<string, Primitive | undefined>;
     body?: unknown;
   }) {
@@ -160,6 +167,58 @@ export class VitalTrackApiClient {
       path: "/purchase-orders",
       method: "POST",
       body: input,
+    });
+  }
+
+  // ─── Catalog ────────────────────────────────────────────────────────────────
+
+  listCatalogItems(query: ListCatalogQuery = {}) {
+    return this.request<CatalogItem[]>({
+      path: "/catalog",
+      query: {
+        facilityId: query.facilityId,
+        search: query.search,
+        category: query.category,
+        isActive: query.isActive,
+        limit: query.limit ?? 100,
+      },
+    });
+  }
+
+  // ─── Suggested Orders ────────────────────────────────────────────────────────
+
+  listSuggestedOrders(query: ListSuggestedOrdersQuery = {}) {
+    return this.request<SuggestedOrder[]>({
+      path: "/suggested-orders",
+      query: {
+        facilityId: query.facilityId,
+        status: query.status,
+        limit: query.limit ?? 25,
+      },
+    });
+  }
+
+  getSuggestedOrder(id: string) {
+    return this.request<SuggestedOrderDetail>({
+      path: `/suggested-orders/${id}`,
+    });
+  }
+
+  /** Detect low-stock items for a facility and create a suggested order. */
+  generateSuggestedOrder(input: GenerateSuggestedOrderInput) {
+    return this.request<{ message?: string; orders: SuggestedOrder[] }>({
+      path: "/suggested-orders/generate",
+      method: "POST",
+      body: input,
+    });
+  }
+
+  /** Approve a pending suggested order and mock-submit it to the supplier. */
+  approveSuggestedOrder(id: string, notes?: string) {
+    return this.request<OrderConfirmation>({
+      path: `/suggested-orders/${id}/approve`,
+      method: "POST",
+      body: { notes },
     });
   }
 }
