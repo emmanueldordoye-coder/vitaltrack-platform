@@ -7,7 +7,9 @@ PostgreSQL database migrations, seeds, and query definitions for VitalTrack—he
 ```
 database/
 ├── migrations/              # SQL migration files (versioned)
-│   └── 001_init_schema.sql  # Core tables, indexes, RLS, triggers
+│   ├── 001_init_schema.sql  # Core tables, indexes, RLS, triggers
+│   ├── 002_product_master_catalog.sql
+│   └── 003_project_lighthouse_ordering_workflow.sql
 ├── seeds/                   # Development & test data
 │   └── 002_seed_data.sql    # Sample orgs, facilities, inventory, stock
 ├── queries/                 # Complex analytical queries
@@ -127,6 +129,14 @@ psql $DATABASE_URL -f database/queries/common_queries.sql
   - 30+ indexes optimized for queries
   - RLS policies enforcing multi-tenant isolation
   - Auto-update triggers for `updated_at` timestamps
+- **002_product_master_catalog.sql** - Normalized Product Master Catalog tables for products, categories, manufacturers, vendors, and units of measure.
+- **003_project_lighthouse_ordering_workflow.sql** - Dentira pilot ordering workflow tables and functions:
+  - `inventory_levels`
+  - `suggested_orders`
+  - `suggested_order_items`
+  - `receiving_events`
+  - Extensions to existing `purchase_orders` and `purchase_order_items`
+  - RLS policies, indexes, constraints, soft-delete columns for mutable workflow rows, and `updated_at` triggers
 
 ### Applying Migrations
 
@@ -136,6 +146,8 @@ supabase db push
 
 # Via psql (local or remote)
 psql $DATABASE_URL -f database/migrations/001_init_schema.sql
+psql $DATABASE_URL -f database/migrations/002_product_master_catalog.sql
+psql $DATABASE_URL -f database/migrations/003_project_lighthouse_ordering_workflow.sql
 
 # Check migration status
 psql $DATABASE_URL -c "SELECT * FROM pg_tables WHERE schemaname = 'public';"
@@ -207,6 +219,12 @@ EOF
 # Load development data
 psql $DATABASE_URL -f database/seeds/002_seed_data.sql
 
+# Load Product Master Catalog template data
+psql $DATABASE_URL -f database/seeds/003_product_master_catalog_template.sql
+
+# Load Project Lighthouse Dentira pilot data
+psql $DATABASE_URL -f database/seeds/004_project_lighthouse_dentira_demo.sql
+
 # Verify data loaded
 psql $DATABASE_URL -c "SELECT COUNT(*) as org_count FROM organizations;"
 psql $DATABASE_URL -c "SELECT COUNT(*) as item_count FROM inventory_items;"
@@ -220,6 +238,19 @@ Seeds are designed to be:
 - **Realistic** - Data mirrors production scenarios
 - **Complete** - Includes cross-table relationships
 - **Testable** - Easy to verify with sample queries
+
+## Project Lighthouse Ordering Workflow
+
+The Dentira pilot workflow is documented in [Project Lighthouse Ordering Workflow](../docs/project-lighthouse-ordering-workflow.md).
+
+The database path is:
+
+1. `products` and `vendors` define the Product Master Catalog and mock Patterson supplier.
+2. `inventory_levels` stores product quantities, par levels, reorder points, and generated stock status by location.
+3. `lighthouse_low_stock_products` exposes active low-stock product rows for the demo UI.
+4. `lighthouse_generate_suggested_orders()` creates vendor-grouped `suggested_orders` and `suggested_order_items`.
+5. `lighthouse_approve_suggested_order()` converts an approved suggested order into `purchase_orders` and `purchase_order_items`.
+6. `receiving_events` records received quantities and updates `inventory_levels` automatically.
 
 ## Indexes
 
