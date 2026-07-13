@@ -48,12 +48,12 @@ psql $DATABASE_URL -f database/queries/common_queries.sql
 ### Entity Relationship Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
+┌─────────────────────────────────────────────────────────────────┐
 │                   ORGANIZATIONS (Tenants)                        │
 │  id | name | slug | tier | status | created_at | updated_at     │
-└────────────┬──────────────────────────────────────────────────────┘
+└───────────┬───────────────────────────────────────────────────┘
              │ (1:N - Multi-tenant isolation root)
-    ┌────────┼────────────────┬──────────────────┬──────────────┐
+    ┌───────┼────────────────┬──────────────────┬──────────────┐
     ▼        ▼                ▼                  ▼              ▼
   USERS   FACILITIES    INVENTORY_ITEMS    SUPPLIERS        ALERTS
   (auth)  (hospitals,   (SKUs, products,  (vendors,
@@ -144,6 +144,7 @@ psql $DATABASE_URL -f database/queries/common_queries.sql
   - Rejects cross-tenant location, suggested-order, purchase-order, purchase-order-item, product, and receiving identifiers
   - Recreates `lighthouse_low_stock_products` with `security_invoker`
   - Revokes public/anonymous execution and grants only the minimum required roles
+  - Makes `receiving_events` append-only for authenticated users and prevents `received_by` impersonation
   - Keeps `service_role` receiving insert available only for trusted server-side receiving jobs
 
 ### Applying Migrations
@@ -261,7 +262,7 @@ The database path is:
 3. `lighthouse_low_stock_products` exposes active low-stock product rows for the demo UI.
 4. `lighthouse_generate_suggested_orders()` creates vendor-grouped `suggested_orders` and `suggested_order_items`.
 5. `lighthouse_approve_suggested_order()` converts an approved suggested order into `purchase_orders` and `purchase_order_items`.
-6. `receiving_events` records received quantities and updates `inventory_levels` automatically.
+6. Append-only `receiving_events` records received quantities and updates `inventory_levels` automatically.
 
 After all four migrations and the Dentira seed, run:
 
@@ -270,7 +271,7 @@ psql $DATABASE_URL -f database/seeds/004_project_lighthouse_dentira_demo.sql
 psql $DATABASE_URL -f database/validation/005_project_lighthouse_security_validation.sql
 ```
 
-The validation transaction proves that cross-tenant low-stock reads, suggested-order generation, suggested-order approval, and receiving inserts are rejected; anonymous users cannot execute privileged functions; authorized managers can complete the same-tenant workflow; and trusted `service_role` receiving still works through the guarded trigger.
+The validation transaction proves that cross-tenant low-stock reads, suggested-order generation, suggested-order approval, and receiving inserts are rejected; anonymous users cannot execute privileged functions; authorized managers can complete the same-tenant workflow; receiving events cannot be updated or deleted by authenticated users; `received_by` cannot be spoofed; and trusted `service_role` receiving still works through the guarded trigger.
 
 For live validation, use the staging-only GitHub Actions workflow documented in [Supabase Migration Validation](../docs/operations/supabase-migration-validation.md). Production has not been touched by the Project Lighthouse validation workflow.
 

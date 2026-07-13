@@ -406,6 +406,7 @@ DECLARE
   caller_org_id UUID;
   caller_app_role VARCHAR(50);
   location_org_id UUID;
+  received_by_org_id UUID;
 BEGIN
   IF caller_id IS NULL THEN
     IF COALESCE(auth.role(), '') <> 'service_role' THEN
@@ -425,6 +426,12 @@ BEGIN
     IF NEW.organization_id <> caller_org_id THEN
       RAISE EXCEPTION 'Receiving event organization does not match caller' USING ERRCODE = '42501';
     END IF;
+
+    IF NEW.received_by IS NOT NULL AND NEW.received_by <> caller_id THEN
+      RAISE EXCEPTION 'Receiving event received_by must match authenticated caller' USING ERRCODE = '42501';
+    END IF;
+
+    NEW.received_by := caller_id;
   END IF;
 
   SELECT f.organization_id
@@ -437,6 +444,18 @@ BEGIN
 
   IF location_org_id IS NULL OR location_org_id <> NEW.organization_id THEN
     RAISE EXCEPTION 'Receiving event location/facility does not match organization' USING ERRCODE = '42501';
+  END IF;
+
+  IF caller_id IS NULL AND NEW.received_by IS NOT NULL THEN
+    SELECT u.organization_id
+    INTO received_by_org_id
+    FROM public.users u
+    WHERE u.id = NEW.received_by
+      AND u.is_active = TRUE;
+
+    IF received_by_org_id IS NULL OR received_by_org_id <> NEW.organization_id THEN
+      RAISE EXCEPTION 'Receiving event received_by user does not match organization' USING ERRCODE = '42501';
+    END IF;
   END IF;
 
   SELECT *
@@ -517,6 +536,12 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS apply_lighthouse_receiving_event ON receiving_events;
+CREATE TRIGGER apply_lighthouse_receiving_event
+  BEFORE INSERT ON receiving_events
+  FOR EACH ROW
+  EXECUTE FUNCTION lighthouse_apply_receiving_event();
+
 CREATE OR REPLACE VIEW lighthouse_low_stock_products
 WITH (security_invoker = true) AS
 SELECT
@@ -553,17 +578,45 @@ WHERE il.status = 'low_stock'
   AND p.is_active = TRUE;
 
 DROP POLICY IF EXISTS receiving_events_own_org ON receiving_events;
-CREATE POLICY receiving_events_own_org
+DROP POLICY IF EXISTS receiving_events_select_own_org ON receiving_events;
+DROP POLICY IF EXISTS receiving_events_insert_own_org ON receiving_events;
+DROP POLICY IF EXISTS receiving_events_update_block ON receiving_events;
+DROP POLICY IF EXISTS receiving_events_delete_block ON receiving_events;
+
+CREATE POLICY receiving_events_select_own_org
   ON receiving_events
-  FOR ALL
-  USING (
-    organization_id = auth.current_user_organization_id()
-    AND auth.current_user_role() IN ('admin', 'manager')
-  )
+  FOR SELECT
+  USING (organization_id = auth.current_user_organization_id());
+
+CREATE POLICY receiving_events_insert_own_org
+  ON receiving_events
+  FOR INSERT
   WITH CHECK (
     organization_id = auth.current_user_organization_id()
     AND auth.current_user_role() IN ('admin', 'manager')
   );
+
+CREATE POLICY receiving_events_update_block
+  ON receiving_events
+  FOR UPDATE
+  USING (FALSE)
+  WITH CHECK (FALSE);
+
+CREATE POLICY receiving_events_delete_block
+  ON receiving_events
+  FOR DELETE
+  USING (FALSE);
+
+REVOKE UPDATE, DELETE ON receiving_events FROM PUBLIC;
+REVOKE UPDATE, DELETE ON receiving_events FROM anon, authenticated, service_role;
+GRANT SELECT ON receiving_events TO authenticated;
+GRANT INSERT ON receiving_events TO authenticated;
+GRANT INSERT ON receiving_events TO service_role;
+
+COMMENT ON POLICY receiving_events_select_own_org ON receiving_events IS
+  'Same-tenant read access for append-only Project Lighthouse receiving events.';
+COMMENT ON POLICY receiving_events_insert_own_org ON receiving_events IS
+  'Same-tenant manager/admin insert access only; receiving events cannot be updated or deleted by authenticated users.';
 
 REVOKE ALL ON FUNCTION lighthouse_order_quantity(DECIMAL, DECIMAL, DECIMAL) FROM PUBLIC;
 REVOKE ALL ON FUNCTION lighthouse_sync_suggested_order_totals(UUID) FROM PUBLIC;
@@ -582,12 +635,10 @@ REVOKE ALL ON lighthouse_low_stock_products FROM anon, service_role;
 GRANT EXECUTE ON FUNCTION lighthouse_generate_suggested_orders(UUID, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION lighthouse_approve_suggested_order(UUID, UUID) TO authenticated;
 GRANT SELECT ON lighthouse_low_stock_products TO authenticated;
-GRANT INSERT ON receiving_events TO authenticated;
-GRANT INSERT ON receiving_events TO service_role;
 
 COMMENT ON FUNCTION lighthouse_generate_suggested_orders(UUID, UUID) IS 'Creates Project Lighthouse suggested orders for the authenticated caller organization only.';
 COMMENT ON FUNCTION lighthouse_approve_suggested_order(UUID, UUID) IS 'Approves a same-tenant suggested order and creates a mock purchase order.';
-COMMENT ON FUNCTION lighthouse_apply_receiving_event() IS 'Applies receiving events after validating same-tenant purchase order, item, location, and product context.';
-COMMENT ON TABLE receiving_events IS 'Receipt records for Project Lighthouse. Authenticated managers insert same-tenant receipts; service_role insert is reserved for trusted server-side receiving jobs and still runs tenant consistency checks.';
+COMMENT ON FUNCTION lighthouse_apply_receiving_event() IS 'Applies append-only receiving events after validating caller identity, received_by attribution, same-tenant purchase order, item, location, and product context.';
+COMMENT ON TABLE receiving_events IS 'Append-only receipt audit records for Project Lighthouse. Authenticated managers insert same-tenant receipts with received_by fixed to auth.uid(); service_role insert is reserved for trusted server-side receiving jobs and still runs tenant consistency checks.';
 
 COMMIT;

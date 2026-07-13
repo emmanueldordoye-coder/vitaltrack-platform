@@ -532,6 +532,8 @@ DECLARE
   stored_actor_id UUID;
   po_id UUID;
   receipt RECORD;
+  receipt_event_id UUID;
+  stamped_received_by UUID;
   before_quantity DECIMAL(12, 2);
   after_quantity DECIMAL(12, 2);
 BEGIN
@@ -577,6 +579,35 @@ BEGIN
     AND product_id = receipt.product_id
     AND deleted_at IS NULL;
 
+  BEGIN
+    INSERT INTO receiving_events (
+      organization_id,
+      facility_id,
+      location_id,
+      purchase_order_id,
+      purchase_order_item_id,
+      product_id,
+      received_quantity,
+      received_by,
+      notes
+    )
+    VALUES (
+      receipt.organization_id,
+      receipt.facility_id,
+      receipt.location_id,
+      receipt.purchase_order_id,
+      receipt.purchase_order_item_id,
+      receipt.product_id,
+      1,
+      'b0000000-0000-0000-0000-000000000001',
+      'Expected to fail: authenticated user cannot spoof received_by.'
+    );
+    RAISE EXCEPTION 'Expected User A to be blocked from spoofing received_by';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
+
   INSERT INTO receiving_events (
     organization_id,
     facility_id,
@@ -596,9 +627,34 @@ BEGIN
     receipt.purchase_order_item_id,
     receipt.product_id,
     1,
-    'a0000000-0000-0000-0000-000000000001',
+    NULL,
     'Security validation same-tenant receiving event.'
-  );
+  )
+  RETURNING id, received_by
+  INTO receipt_event_id, stamped_received_by;
+
+  IF stamped_received_by <> 'a0000000-0000-0000-0000-000000000001' THEN
+    RAISE EXCEPTION 'Expected received_by to be stamped from auth.uid(), got %', stamped_received_by;
+  END IF;
+
+  BEGIN
+    UPDATE receiving_events
+    SET notes = 'Expected to fail: receiving events are append-only.'
+    WHERE id = receipt_event_id;
+    RAISE EXCEPTION 'Expected User A to be blocked from updating receiving event %', receipt_event_id;
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
+
+  BEGIN
+    DELETE FROM receiving_events
+    WHERE id = receipt_event_id;
+    RAISE EXCEPTION 'Expected User A to be blocked from deleting receiving event %', receipt_event_id;
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
 
   SELECT current_quantity
   INTO after_quantity
@@ -635,6 +691,35 @@ BEGIN
     AND location_id = 'e3000000-0000-0000-0000-000000000001'
     AND product_id = 'e4500000-0000-0000-0000-000000000001'
     AND deleted_at IS NULL;
+
+  BEGIN
+    INSERT INTO receiving_events (
+      organization_id,
+      facility_id,
+      location_id,
+      purchase_order_id,
+      purchase_order_item_id,
+      product_id,
+      received_quantity,
+      received_by,
+      notes
+    )
+    VALUES (
+      'e0000000-0000-0000-0000-000000000001',
+      'e1000000-0000-0000-0000-000000000001',
+      'e3000000-0000-0000-0000-000000000001',
+      'e6000000-0000-0000-0000-000000000001',
+      'e6100000-0000-0000-0000-000000000001',
+      'e4500000-0000-0000-0000-000000000001',
+      1,
+      'a0000000-0000-0000-0000-000000000001',
+      'Expected to fail: service-role receiving cannot attribute to a cross-tenant user.'
+    );
+    RAISE EXCEPTION 'Expected service_role to be blocked from cross-tenant received_by attribution';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
 
   INSERT INTO receiving_events (
     organization_id,

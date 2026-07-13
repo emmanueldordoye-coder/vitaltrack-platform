@@ -83,7 +83,7 @@ The workflow performs these checks:
 11. Confirms Row Level Security is enabled on the expected tenant tables.
 12. Confirms foreign keys and expected indexes exist.
 13. Confirms Dentira seed counts and low-stock detection.
-14. Runs `database/validation/005_project_lighthouse_security_validation.sql` to prove cross-tenant access is rejected and same-tenant manager workflow still succeeds.
+14. Runs `database/validation/005_project_lighthouse_security_validation.sql` to prove cross-tenant access is rejected, same-tenant manager workflow still succeeds, receiving events are append-only, and `received_by` cannot be spoofed.
 
 Production is not touched by this workflow. The workflow requires the protected `staging` GitHub environment, staging-specific secrets, and a manual `VALIDATE_STAGING` confirmation before it links to any Supabase project.
 
@@ -115,7 +115,7 @@ After a successful run, confirm in the Supabase dashboard:
 3. Confirm the Project Lighthouse tables are present.
 4. Confirm `inventory_levels` contains seven Dentira demo rows.
 5. Confirm `lighthouse_low_stock_products` returns low-stock Dentira products.
-6. Confirm the Actions log shows `005_project_lighthouse_security_validation.sql` completed. That validation exercises suggested-order generation, approval, and receiving inside a rollback transaction, so it should not leave validation orders behind.
+6. Confirm the Actions log shows `005_project_lighthouse_security_validation.sql` completed. That validation exercises suggested-order generation, approval, receiving, append-only receiving protections, and `received_by` attribution inside a rollback transaction, so it should not leave validation orders behind.
 
 ## Common Errors
 

@@ -28,7 +28,7 @@ Managers review `suggested_order_items`, adjust `approved_quantity` when needed,
 
 Approval converts the suggested order into `purchase_orders` and `purchase_order_items`. The current workflow uses mock supplier submission fields only; no Patterson integration is called from the database layer.
 
-Receiving is recorded in `receiving_events`. Inserting a receiving event updates the matching `purchase_order_items.quantity_received`, adjusts purchase order status, and increases `inventory_levels.current_quantity`.
+Receiving is recorded in append-only `receiving_events`. Inserting a receiving event updates the matching `purchase_order_items.quantity_received`, adjusts purchase order status, and increases `inventory_levels.current_quantity`; normal authenticated users cannot update or delete receiving event audit rows afterward.
 
 ## Entity Relationships
 
@@ -54,7 +54,7 @@ Privileged Project Lighthouse RPCs are intentionally limited to active `admin` a
 
 `lighthouse_low_stock_products` is created with PostgreSQL `security_invoker` behavior so authenticated users see only rows allowed by the base table RLS policies.
 
-Trusted `service_role` access is limited to inserting `receiving_events` for server-side receiving jobs. The receiving trigger still validates organization, facility, location, purchase order, purchase order item, product, and ordered quantity before updating inventory. The user-invoked generate and approve RPCs are granted only to `authenticated`.
+Trusted `service_role` access is limited to inserting `receiving_events` for server-side receiving jobs. The receiving trigger still validates organization, facility, location, purchase order, purchase order item, product, received-by attribution, and ordered quantity before updating inventory. Authenticated inserts stamp `received_by` from `auth.uid()` and reject attempts to attribute a receipt to another user; service-role inserts may only supply a `received_by` user from the same organization as the receiving event. The user-invoked generate and approve RPCs are granted only to `authenticated`.
 
 ## Migration Order
 
@@ -130,3 +130,5 @@ The validation proves:
 - Anonymous users cannot execute privileged Project Lighthouse RPCs.
 - An authorized manager can generate, approve, and receive within their own organization.
 - Supplied `actor_id` values do not override `auth.uid()`.
+- Receiving events are append-only for authenticated users.
+- Authenticated users cannot spoof `received_by`, and service-role receiving cannot attribute receipts to cross-tenant users.
