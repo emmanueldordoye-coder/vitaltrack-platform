@@ -1,0 +1,344 @@
+name: Validate Supabase Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type VALIDATE_STAGING to confirm this is a non-production Supabase project."
+        required: true
+        type: string
+
+jobs:
+  validate:
+    name: Validate Project Lighthouse migrations
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PGHOST: db.${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PGSSLMODE: require
+
+    steps:
+      - name: Refuse accidental production execution
+        run: |
+          set -euo pipefail
+
+          if [ "${{ inputs.confirmation }}" != "VALIDATE_STAGING" ]; then
+            echo "::error::This workflow only runs when the confirmation input is VALIDATE_STAGING."
+            exit 1
+          fi
+
+          for secret_name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_PASSWORD; do
+            if [ -z "${!secret_name:-}" ]; then
+              echo "::error::Missing required GitHub secret: ${secret_name}"
+              exit 1
+            fi
+          done
+
+          echo "Confirmed non-production staging validation target."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          supabase --version
+          psql --version
+
+      - name: Validate migration file ordering
+        run: |
+          set -euo pipefail
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          expected = [
+              Path("database/migrations/001_init_schema.sql"),
+              Path("database/migrations/002_product_master_catalog.sql"),
+              Path("database/migrations/003_project_lighthouse_ordering_workflow.sql"),
+          ]
+          actual = sorted(Path("database/migrations").glob("*.sql"))
+
+          if actual != expected:
+              print("Expected migration order:")
+              for path in expected:
+                  print(f"  {path}")
+              print("Actual migration order:")
+              for path in actual:
+                  print(f"  {path}")
+              raise SystemExit("Migration file ordering does not match the Project Lighthouse validation order.")
+
+          seed = Path("database/seeds/004_project_lighthouse_dentira_demo.sql")
+          if not seed.exists():
+              raise SystemExit(f"Missing expected seed file: {seed}")
+
+          print("Migration order:")
+          for path in expected:
+              print(f"  {path}")
+          print(f"Seed file: {seed}")
+          PY
+
+      - name: Check SQL files for static hazards
+        run: |
+          set -euo pipefail
+
+          for file in \
+            database/migrations/001_init_schema.sql \
+            database/migrations/002_product_master_catalog.sql \
+            database/migrations/003_project_lighthouse_ordering_workflow.sql \
+            database/seeds/004_project_lighthouse_dentira_demo.sql
+          do
+            echo "Checking ${file}"
+            if grep -nE '^(<<<<<<<|=======|>>>>>>>)' "$file"; then
+              echo "::error file=${file}::Unresolved merge conflict marker found."
+              exit 1
+            fi
+            if [ ! -s "$file" ]; then
+              echo "::error file=${file}::SQL file is empty."
+              exit 1
+            fi
+          done
+
+      - name: Prepare Supabase migration workspace
+        run: |
+          set -euo pipefail
+
+          supabase init --force
+          rm -rf supabase/migrations
+          mkdir -p supabase/migrations
+
+          cp database/migrations/001_init_schema.sql supabase/migrations/20260625000001_init_schema.sql
+          cp database/migrations/002_product_master_catalog.sql supabase/migrations/20260708000002_product_master_catalog.sql
+          cp database/migrations/003_project_lighthouse_ordering_workflow.sql supabase/migrations/20260709000003_project_lighthouse_ordering_workflow.sql
+
+          echo "Supabase migration workspace:"
+          ls -1 supabase/migrations
+
+      - name: Link staging Supabase project
+        run: |
+          set -euo pipefail
+          supabase link \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Dry-run remote migration push
+        run: |
+          set -euo pipefail
+          supabase --yes db push --linked --dry-run --include-all --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Apply migrations to staging
+        run: |
+          set -euo pipefail
+          supabase --yes db push --linked --include-all --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Run idempotent Dentira seed twice
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/seeds/004_project_lighthouse_dentira_demo.sql
+          psql -v ON_ERROR_STOP=1 -f database/seeds/004_project_lighthouse_dentira_demo.sql
+
+      - name: Verify Project Lighthouse schema
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            missing_tables text[];
+            rls_disabled text[];
+            missing_indexes text[];
+            fk_gaps text[];
+          BEGIN
+            WITH expected(table_name) AS (
+              VALUES
+                ('products'),
+                ('categories'),
+                ('manufacturers'),
+                ('vendors'),
+                ('units_of_measure'),
+                ('locations'),
+                ('inventory_levels'),
+                ('suggested_orders'),
+                ('suggested_order_items'),
+                ('purchase_orders'),
+                ('purchase_order_items'),
+                ('receiving_events')
+            )
+            SELECT array_agg(table_name ORDER BY table_name)
+              INTO missing_tables
+            FROM expected
+            WHERE to_regclass('public.' || table_name) IS NULL;
+
+            IF missing_tables IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing expected tables: %', missing_tables;
+            END IF;
+
+            WITH expected(table_name) AS (
+              VALUES
+                ('products'),
+                ('categories'),
+                ('manufacturers'),
+                ('vendors'),
+                ('units_of_measure'),
+                ('locations'),
+                ('inventory_levels'),
+                ('suggested_orders'),
+                ('suggested_order_items'),
+                ('purchase_orders'),
+                ('purchase_order_items'),
+                ('receiving_events')
+            )
+            SELECT array_agg(e.table_name ORDER BY e.table_name)
+              INTO rls_disabled
+            FROM expected e
+            JOIN pg_class c
+              ON c.oid = to_regclass('public.' || e.table_name)
+            WHERE c.relrowsecurity IS DISTINCT FROM TRUE;
+
+            IF rls_disabled IS NOT NULL THEN
+              RAISE EXCEPTION 'RLS is not enabled on expected tenant tables: %', rls_disabled;
+            END IF;
+
+            WITH expected(table_name, minimum_fk_count) AS (
+              VALUES
+                ('products', 1),
+                ('categories', 1),
+                ('manufacturers', 1),
+                ('vendors', 1),
+                ('units_of_measure', 1),
+                ('locations', 1),
+                ('inventory_levels', 1),
+                ('suggested_orders', 1),
+                ('suggested_order_items', 1),
+                ('purchase_orders', 1),
+                ('purchase_order_items', 1),
+                ('receiving_events', 1)
+            ),
+            fk_counts AS (
+              SELECT
+                c.relname AS table_name,
+                count(*) AS fk_count
+              FROM pg_constraint
+              JOIN pg_class c
+                ON c.oid = pg_constraint.conrelid
+              WHERE contype = 'f'
+                AND connamespace = 'public'::regnamespace
+              GROUP BY c.relname
+            )
+            SELECT array_agg(e.table_name || ' expected>=' || e.minimum_fk_count || ' actual=' || COALESCE(fk.fk_count, 0) ORDER BY e.table_name)
+              INTO fk_gaps
+            FROM expected e
+            LEFT JOIN fk_counts fk
+              ON fk.table_name = e.table_name
+            WHERE COALESCE(fk.fk_count, 0) < e.minimum_fk_count;
+
+            IF fk_gaps IS NOT NULL THEN
+              RAISE EXCEPTION 'Foreign key validation failed: %', fk_gaps;
+            END IF;
+
+            WITH expected(index_name) AS (
+              VALUES
+                ('idx_products_organization_id'),
+                ('idx_categories_organization_id'),
+                ('idx_manufacturers_organization_id'),
+                ('idx_vendors_organization_id'),
+                ('idx_units_of_measure_organization_id'),
+                ('idx_inventory_levels_active_product_location'),
+                ('idx_inventory_levels_low_stock'),
+                ('idx_suggested_orders_open_vendor_location'),
+                ('idx_suggested_order_items_active_order_product'),
+                ('idx_purchase_orders_suggested_order_id'),
+                ('idx_po_items_suggested_order_item_id'),
+                ('idx_receiving_events_product_location')
+            )
+            SELECT array_agg(index_name ORDER BY index_name)
+              INTO missing_indexes
+            FROM expected
+            WHERE to_regclass('public.' || index_name) IS NULL;
+
+            IF missing_indexes IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing expected indexes: %', missing_indexes;
+            END IF;
+          END $$;
+          SQL
+
+      - name: Verify seed data and suggested order generation
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            dentira_org_id uuid := 'd0000000-0000-0000-0000-000000000001';
+            product_count int;
+            inventory_count int;
+            low_stock_count int;
+            generated_count int;
+          BEGIN
+            SELECT count(*) INTO product_count
+            FROM products
+            WHERE organization_id = dentira_org_id
+              AND sku LIKE 'PAT-%';
+
+            SELECT count(*) INTO inventory_count
+            FROM inventory_levels
+            WHERE organization_id = dentira_org_id
+              AND deleted_at IS NULL;
+
+            SELECT count(*) INTO low_stock_count
+            FROM lighthouse_low_stock_products
+            WHERE organization_id = dentira_org_id;
+
+            SELECT count(*) INTO generated_count
+            FROM lighthouse_generate_suggested_orders(NULL, NULL);
+
+            IF product_count <> 7 THEN
+              RAISE EXCEPTION 'Expected 7 Dentira demo products, found %', product_count;
+            END IF;
+
+            IF inventory_count <> 7 THEN
+              RAISE EXCEPTION 'Expected 7 Dentira inventory levels, found %', inventory_count;
+            END IF;
+
+            IF low_stock_count < 1 THEN
+              RAISE EXCEPTION 'Expected at least one low-stock product, found %', low_stock_count;
+            END IF;
+
+            IF generated_count < 1 THEN
+              RAISE EXCEPTION 'Expected suggested order generation to return at least one order, found %', generated_count;
+            END IF;
+          END $$;
+          SQL
+
+      - name: Print validation summary
+        if: success()
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Project Lighthouse Supabase Validation"
+            echo ""
+            echo "- Workflow target: staging GitHub environment"
+            echo "- Migration order validated:"
+            echo "  - database/migrations/001_init_schema.sql"
+            echo "  - database/migrations/002_product_master_catalog.sql"
+            echo "  - database/migrations/003_project_lighthouse_ordering_workflow.sql"
+            echo "- Seed file executed twice: database/seeds/004_project_lighthouse_dentira_demo.sql"
+            echo "- Expected tables, RLS, foreign keys, and indexes verified"
+            echo "- Suggested order generation smoke check executed"
+            echo "- Production migration was not run by this workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
