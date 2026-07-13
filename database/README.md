@@ -48,12 +48,12 @@ psql $DATABASE_URL -f database/queries/common_queries.sql
 ### Entity Relationship Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                   ORGANIZATIONS (Tenants)                        │
 │  id | name | slug | tier | status | created_at | updated_at     │
-└───────────┬───────────────────────────────────────────────────┘
+└────────────┬──────────────────────────────────────────────────────┘
              │ (1:N - Multi-tenant isolation root)
-    ┌───────┼────────────────┬──────────────────┬──────────────┐
+    ┌────────┼────────────────┬──────────────────┬──────────────┐
     ▼        ▼                ▼                  ▼              ▼
   USERS   FACILITIES    INVENTORY_ITEMS    SUPPLIERS        ALERTS
   (auth)  (hospitals,   (SKUs, products,  (vendors,
