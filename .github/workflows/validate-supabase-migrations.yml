@@ -16,14 +16,15 @@ jobs:
     timeout-minutes: 30
 
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      PGHOST: db.${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.STAGING_SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+      APPROVED_SUPABASE_PROJECT_REF: ${{ secrets.APPROVED_STAGING_SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+      PGHOST: db.${{ secrets.STAGING_SUPABASE_PROJECT_REF }}.supabase.co
       PGPORT: "5432"
       PGDATABASE: postgres
       PGUSER: postgres
-      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PGPASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
       PGSSLMODE: require
 
     steps:
@@ -36,22 +37,27 @@ jobs:
             exit 1
           fi
 
-          for secret_name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_PASSWORD; do
+          for secret_name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF APPROVED_SUPABASE_PROJECT_REF SUPABASE_DB_PASSWORD; do
             if [ -z "${!secret_name:-}" ]; then
               echo "::error::Missing required GitHub secret: ${secret_name}"
               exit 1
             fi
           done
 
+          if [ "$SUPABASE_PROJECT_REF" != "$APPROVED_SUPABASE_PROJECT_REF" ]; then
+            echo "::error::Configured staging project ref does not match the approved staging project ref."
+            exit 1
+          fi
+
           echo "Confirmed non-production staging validation target."
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@v3
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Install PostgreSQL client
         run: |
@@ -72,6 +78,7 @@ jobs:
               Path("database/migrations/001_init_schema.sql"),
               Path("database/migrations/002_product_master_catalog.sql"),
               Path("database/migrations/003_project_lighthouse_ordering_workflow.sql"),
+              Path("database/migrations/004_project_lighthouse_security_hardening.sql"),
           ]
           actual = sorted(Path("database/migrations").glob("*.sql"))
 
@@ -88,10 +95,15 @@ jobs:
           if not seed.exists():
               raise SystemExit(f"Missing expected seed file: {seed}")
 
+          security_validation = Path("database/validation/005_project_lighthouse_security_validation.sql")
+          if not security_validation.exists():
+              raise SystemExit(f"Missing expected security validation file: {security_validation}")
+
           print("Migration order:")
           for path in expected:
               print(f"  {path}")
           print(f"Seed file: {seed}")
+          print(f"Security validation file: {security_validation}")
           PY
 
       - name: Check SQL files for static hazards
@@ -102,7 +114,9 @@ jobs:
             database/migrations/001_init_schema.sql \
             database/migrations/002_product_master_catalog.sql \
             database/migrations/003_project_lighthouse_ordering_workflow.sql \
-            database/seeds/004_project_lighthouse_dentira_demo.sql
+            database/migrations/004_project_lighthouse_security_hardening.sql \
+            database/seeds/004_project_lighthouse_dentira_demo.sql \
+            database/validation/005_project_lighthouse_security_validation.sql
           do
             echo "Checking ${file}"
             if grep -nE '^(<<<<<<<|=======|>>>>>>>)' "$file"; then
@@ -126,6 +140,7 @@ jobs:
           cp database/migrations/001_init_schema.sql supabase/migrations/20260625000001_init_schema.sql
           cp database/migrations/002_product_master_catalog.sql supabase/migrations/20260708000002_product_master_catalog.sql
           cp database/migrations/003_project_lighthouse_ordering_workflow.sql supabase/migrations/20260709000003_project_lighthouse_ordering_workflow.sql
+          cp database/migrations/004_project_lighthouse_security_hardening.sql supabase/migrations/20260712000004_project_lighthouse_security_hardening.sql
 
           echo "Supabase migration workspace:"
           ls -1 supabase/migrations
@@ -277,7 +292,7 @@ jobs:
           END $$;
           SQL
 
-      - name: Verify seed data and suggested order generation
+      - name: Verify seed data and low-stock detection
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 <<'SQL'
@@ -287,7 +302,6 @@ jobs:
             product_count int;
             inventory_count int;
             low_stock_count int;
-            generated_count int;
           BEGIN
             SELECT count(*) INTO product_count
             FROM products
@@ -303,9 +317,6 @@ jobs:
             FROM lighthouse_low_stock_products
             WHERE organization_id = dentira_org_id;
 
-            SELECT count(*) INTO generated_count
-            FROM lighthouse_generate_suggested_orders(NULL, NULL);
-
             IF product_count <> 7 THEN
               RAISE EXCEPTION 'Expected 7 Dentira demo products, found %', product_count;
             END IF;
@@ -317,12 +328,13 @@ jobs:
             IF low_stock_count < 1 THEN
               RAISE EXCEPTION 'Expected at least one low-stock product, found %', low_stock_count;
             END IF;
-
-            IF generated_count < 1 THEN
-              RAISE EXCEPTION 'Expected suggested order generation to return at least one order, found %', generated_count;
-            END IF;
           END $$;
           SQL
+
+      - name: Run tenant-isolation security validation
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f database/validation/005_project_lighthouse_security_validation.sql
 
       - name: Print validation summary
         if: success()
@@ -337,8 +349,11 @@ jobs:
             echo "  - database/migrations/001_init_schema.sql"
             echo "  - database/migrations/002_product_master_catalog.sql"
             echo "  - database/migrations/003_project_lighthouse_ordering_workflow.sql"
+            echo "  - database/migrations/004_project_lighthouse_security_hardening.sql"
             echo "- Seed file executed twice: database/seeds/004_project_lighthouse_dentira_demo.sql"
             echo "- Expected tables, RLS, foreign keys, and indexes verified"
-            echo "- Suggested order generation smoke check executed"
+            echo "- Low-stock detection smoke check executed"
+            echo "- Tenant-isolation security validation executed"
+            echo "- Actions pinned to full commit SHAs; Supabase CLI pinned to 2.109.1"
             echo "- Production migration was not run by this workflow"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -9,7 +9,8 @@ database/
 ├── migrations/              # SQL migration files (versioned)
 │   ├── 001_init_schema.sql  # Core tables, indexes, RLS, triggers
 │   ├── 002_product_master_catalog.sql
-│   └── 003_project_lighthouse_ordering_workflow.sql
+│   ├── 003_project_lighthouse_ordering_workflow.sql
+│   └── 004_project_lighthouse_security_hardening.sql
 ├── seeds/                   # Development & test data
 │   └── 002_seed_data.sql    # Sample orgs, facilities, inventory, stock
 ├── queries/                 # Complex analytical queries
@@ -137,6 +138,13 @@ psql $DATABASE_URL -f database/queries/common_queries.sql
   - `receiving_events`
   - Extensions to existing `purchase_orders` and `purchase_order_items`
   - RLS policies, indexes, constraints, soft-delete columns for mutable workflow rows, and `updated_at` triggers
+- **004_project_lighthouse_security_hardening.sql** - Follow-up hardening for the merged Project Lighthouse workflow:
+  - Replaces privileged Project Lighthouse RPC definitions without rewriting migration `003`
+  - Requires `auth.uid()` and resolves the acting organization and role from existing `users` records
+  - Rejects cross-tenant location, suggested-order, purchase-order, purchase-order-item, product, and receiving identifiers
+  - Recreates `lighthouse_low_stock_products` with `security_invoker`
+  - Revokes public/anonymous execution and grants only the minimum required roles
+  - Keeps `service_role` receiving insert available only for trusted server-side receiving jobs
 
 ### Applying Migrations
 
@@ -148,6 +156,7 @@ supabase db push
 psql $DATABASE_URL -f database/migrations/001_init_schema.sql
 psql $DATABASE_URL -f database/migrations/002_product_master_catalog.sql
 psql $DATABASE_URL -f database/migrations/003_project_lighthouse_ordering_workflow.sql
+psql $DATABASE_URL -f database/migrations/004_project_lighthouse_security_hardening.sql
 
 # Check migration status
 psql $DATABASE_URL -c "SELECT * FROM pg_tables WHERE schemaname = 'public';"
@@ -243,6 +252,8 @@ Seeds are designed to be:
 
 The Dentira pilot workflow is documented in [Project Lighthouse Ordering Workflow](../docs/project-lighthouse-ordering-workflow.md).
 
+Migration `004_project_lighthouse_security_hardening.sql` exists because PR #9 merged migration `003_project_lighthouse_ordering_workflow.sql` into main before the security hardening was included. Migration `003` is now published migration history and must not be amended or replaced. Apply `004` after `003` to harden the existing database objects in place.
+
 The database path is:
 
 1. `products` and `vendors` define the Product Master Catalog and mock Patterson supplier.
@@ -251,6 +262,17 @@ The database path is:
 4. `lighthouse_generate_suggested_orders()` creates vendor-grouped `suggested_orders` and `suggested_order_items`.
 5. `lighthouse_approve_suggested_order()` converts an approved suggested order into `purchase_orders` and `purchase_order_items`.
 6. `receiving_events` records received quantities and updates `inventory_levels` automatically.
+
+After all four migrations and the Dentira seed, run:
+
+```bash
+psql $DATABASE_URL -f database/seeds/004_project_lighthouse_dentira_demo.sql
+psql $DATABASE_URL -f database/validation/005_project_lighthouse_security_validation.sql
+```
+
+The validation transaction proves that cross-tenant low-stock reads, suggested-order generation, suggested-order approval, and receiving inserts are rejected; anonymous users cannot execute privileged functions; authorized managers can complete the same-tenant workflow; and trusted `service_role` receiving still works through the guarded trigger.
+
+For live validation, use the staging-only GitHub Actions workflow documented in [Supabase Migration Validation](../docs/operations/supabase-migration-validation.md). Production has not been touched by the Project Lighthouse validation workflow.
 
 ## Indexes
 
