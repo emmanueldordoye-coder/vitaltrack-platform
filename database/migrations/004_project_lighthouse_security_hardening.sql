@@ -482,7 +482,7 @@ BEGIN
 
   IF order_item.purchase_order_id <> NEW.purchase_order_id
      OR order_item.organization_id IS DISTINCT FROM NEW.organization_id
-     OR order_item.product_id <> NEW.product_id
+     OR order_item.product_id IS DISTINCT FROM NEW.product_id
      OR order_header.organization_id IS DISTINCT FROM NEW.organization_id
      OR order_header.facility_id <> NEW.facility_id THEN
     RAISE EXCEPTION 'Receiving event does not match purchase order context' USING ERRCODE = '42501';
@@ -638,7 +638,7 @@ GRANT SELECT ON lighthouse_low_stock_products TO authenticated;
 
 COMMENT ON FUNCTION lighthouse_generate_suggested_orders(UUID, UUID) IS 'Creates Project Lighthouse suggested orders for the authenticated caller organization only.';
 COMMENT ON FUNCTION lighthouse_approve_suggested_order(UUID, UUID) IS 'Approves a same-tenant suggested order and creates a mock purchase order.';
-COMMENT ON FUNCTION lighthouse_apply_receiving_event() IS 'Applies append-only receiving events after validating caller identity, received_by attribution, same-tenant purchase order, item, location, and product context.';
+COMMENT ON FUNCTION lighthouse_apply_receiving_event() IS 'Applies append-only receiving events after validating caller identity, received_by attribution, same-tenant purchase order, item, location, non-null matching product context, and ordered quantity.';
 COMMENT ON TABLE receiving_events IS 'Append-only receipt audit records for Project Lighthouse. Authenticated managers insert same-tenant receipts with received_by fixed to auth.uid(); service_role insert is reserved for trusted server-side receiving jobs and still runs tenant consistency checks.';
 
 COMMIT;
