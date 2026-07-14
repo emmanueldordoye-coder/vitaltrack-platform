@@ -9,9 +9,12 @@ Use a staging or dedicated throwaway Supabase project. A fresh project is prefer
 1. `database/migrations/001_init_schema.sql`
 2. `database/migrations/002_product_master_catalog.sql`
 3. `database/migrations/003_project_lighthouse_ordering_workflow.sql`
-4. `database/seeds/004_project_lighthouse_dentira_demo.sql`
+4. `database/migrations/004_project_lighthouse_security_hardening.sql`
+5. `database/seeds/004_project_lighthouse_dentira_demo.sql`
 
 The workflow adapts the existing `database/migrations` layout into a temporary `supabase/migrations` directory during the GitHub Actions run. It does not move or rename repository SQL files.
+
+Migration `004_project_lighthouse_security_hardening.sql` is a follow-up to PR #9. PR #9 merged `003_project_lighthouse_ordering_workflow.sql` into main before the security hardening was included, so `003` is now published migration history and must not be rewritten. Migration `004` applies the hardening in place without replacing or amending the merged migration.
 
 ## Required GitHub Secrets
 
@@ -19,9 +22,10 @@ Add these secrets to the repository or the protected `staging` GitHub environmen
 
 | Secret | Purpose |
 | --- | --- |
-| `SUPABASE_ACCESS_TOKEN` | Supabase personal access token used by the CLI. |
-| `SUPABASE_PROJECT_REF` | Project ref for the staging or dedicated test Supabase project. |
-| `SUPABASE_DB_PASSWORD` | Database password for the staging or dedicated test Supabase project. |
+| `STAGING_SUPABASE_ACCESS_TOKEN` | Supabase personal access token used by the CLI for staging validation. |
+| `STAGING_SUPABASE_PROJECT_REF` | Project ref for the staging or dedicated test Supabase project. |
+| `APPROVED_STAGING_SUPABASE_PROJECT_REF` | Approved staging project ref. The workflow fails if this does not match `STAGING_SUPABASE_PROJECT_REF`. |
+| `STAGING_SUPABASE_DB_PASSWORD` | Database password for the staging or dedicated test Supabase project. |
 
 Do not use production values for these secrets.
 
@@ -36,7 +40,7 @@ Do not use production values for these secrets.
 
 1. Open the GitHub repository.
 2. Go to **Settings** -> **Secrets and variables** -> **Actions**.
-3. Add `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and `SUPABASE_DB_PASSWORD`.
+3. Add `STAGING_SUPABASE_ACCESS_TOKEN`, `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD`.
 4. If the repository uses GitHub environments, add the same secrets under the `staging` environment and keep any approval rules enabled.
 
 ## Trigger the Workflow
@@ -44,7 +48,7 @@ Do not use production values for these secrets.
 1. Open the repository's **Actions** tab.
 2. Select **Validate Supabase Migrations**.
 3. Choose **Run workflow**.
-4. Select the `project-lighthouse-ordering-workflow` branch.
+4. Select the `security/project-lighthouse-hardening` branch.
 5. Enter `VALIDATE_STAGING` in the confirmation field.
 6. Start the run.
 
@@ -55,14 +59,15 @@ The confirmation value is required so the workflow fails before checkout if it i
 The workflow performs these checks:
 
 1. Confirms required secrets are present.
-2. Installs the Supabase CLI and PostgreSQL client.
-3. Validates migration file order.
-4. Checks SQL files for static hazards such as merge conflict markers.
-5. Links to the staging Supabase project.
-6. Runs `supabase db push --dry-run`.
-7. Applies all migrations to staging.
-8. Runs the Dentira seed file twice to confirm idempotency.
-9. Confirms these tables exist:
+2. Confirms the configured staging project ref matches the approved staging project ref.
+3. Installs the Supabase CLI and PostgreSQL client.
+4. Validates migration file order.
+5. Checks SQL files for static hazards such as merge conflict markers.
+6. Links to the staging Supabase project.
+7. Runs `supabase db push --dry-run`.
+8. Applies all migrations to staging.
+9. Runs the Dentira seed file twice to confirm idempotency.
+10. Confirms these tables exist:
    - `products`
    - `categories`
    - `manufacturers`
@@ -75,20 +80,30 @@ The workflow performs these checks:
    - `purchase_orders`
    - `purchase_order_items`
    - `receiving_events`
-10. Confirms Row Level Security is enabled on the expected tenant tables.
-11. Confirms foreign keys and expected indexes exist.
-12. Confirms Dentira seed counts and low-stock suggested order generation.
+11. Confirms Row Level Security is enabled on the expected tenant tables.
+12. Confirms foreign keys and expected indexes exist.
+13. Confirms Dentira seed counts and low-stock detection.
+14. Runs `database/validation/005_project_lighthouse_security_validation.sql` to prove cross-tenant access is rejected, same-tenant manager workflow still succeeds, receiving events are append-only, and `received_by` cannot be spoofed.
+
+Production is not touched by this workflow. The workflow requires the protected `staging` GitHub environment, staging-specific secrets, and a manual `VALIDATE_STAGING` confirmation before it links to any Supabase project.
+
+The workflow pins:
+
+- `actions/checkout` to `34e114876b0b11c390a56381ad16ebd13914f8d5`
+- `supabase/setup-cli` to `46f7f98c7f948ad727d22c1e67fab04c223a0520`
+- Supabase CLI to `2.109.1`
 
 ## Successful Run Indicators
 
 A successful run should show:
 
-- `Migration order:` followed by the three migration files.
+- `Migration order:` followed by the four migration files.
 - `Finished supabase link.`
 - A successful `supabase db push --dry-run`.
 - A successful `supabase db push`.
-- Two successful executions of `004_project_lighthouse_dentira_demo.sql`.
+- Two successful executions of `database/seeds/004_project_lighthouse_dentira_demo.sql`.
 - No raised PostgreSQL exceptions from schema, RLS, foreign key, index, seed, or suggested-order checks.
+- A successful execution of `005_project_lighthouse_security_validation.sql`.
 - A GitHub Actions summary headed `Project Lighthouse Supabase Validation`.
 
 ## Confirm Migrations Succeeded
@@ -100,15 +115,16 @@ After a successful run, confirm in the Supabase dashboard:
 3. Confirm the Project Lighthouse tables are present.
 4. Confirm `inventory_levels` contains seven Dentira demo rows.
 5. Confirm `lighthouse_low_stock_products` returns low-stock Dentira products.
-6. Confirm one or more `suggested_orders` rows exist after the smoke check.
+6. Confirm the Actions log shows `005_project_lighthouse_security_validation.sql` completed. That validation exercises suggested-order generation, approval, receiving, append-only receiving protections, and `received_by` attribution inside a rollback transaction, so it should not leave validation orders behind.
 
 ## Common Errors
 
 | Error | Likely Cause | Fix |
 | --- | --- | --- |
-| `Missing required GitHub secret` | One or more required secrets are not configured for Actions or the `staging` environment. | Add `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and `SUPABASE_DB_PASSWORD`. |
+| `Missing required GitHub secret` | One or more required secrets are not configured for Actions or the `staging` environment. | Add `STAGING_SUPABASE_ACCESS_TOKEN`, `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD`. |
+| `Configured staging project ref does not match the approved staging project ref` | The workflow target does not match the approved staging project guard. | Confirm both staging project ref secrets point to the same non-production project. |
 | `This workflow only runs when the confirmation input is VALIDATE_STAGING` | The manual confirmation input was blank or misspelled. | Re-run with exactly `VALIDATE_STAGING`. |
-| `failed to connect to postgres` or `password authentication failed` | Incorrect database password or project ref. | Verify `SUPABASE_PROJECT_REF` and reset `SUPABASE_DB_PASSWORD` if needed. |
+| `failed to connect to postgres` or `password authentication failed` | Incorrect database password or project ref. | Verify `STAGING_SUPABASE_PROJECT_REF` and reset `STAGING_SUPABASE_DB_PASSWORD` if needed. |
 | `relation already exists`, `policy already exists`, or duplicate trigger errors | The target staging project has partial schema state but no matching migration history. | Use a fresh staging project or reset the dedicated staging database before rerunning. |
 | `Migration file ordering does not match` | A migration file was added, renamed, or removed without updating the validation workflow. | Review the new migration order and update the workflow intentionally. |
 | `Missing expected tables`, `Missing expected indexes`, or `RLS is not enabled` | A migration did not apply or the schema differs from the expected Project Lighthouse workflow. | Open the failed step logs, fix the migration, and rerun on a clean staging project. |
@@ -122,8 +138,8 @@ Do not roll back production. This workflow is for staging or a dedicated validat
 Preferred reset path:
 
 1. Delete and recreate the dedicated validation Supabase project, or create a new disposable staging project.
-2. Update `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD` in GitHub secrets.
-3. Re-run the workflow from the `project-lighthouse-ordering-workflow` branch.
+2. Update `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD` in GitHub secrets.
+3. Re-run the workflow from the `security/project-lighthouse-hardening` branch.
 
 If the staging project must be preserved:
 
