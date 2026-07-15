@@ -420,104 +420,109 @@ ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reorder_rules ENABLE ROW LEVEL SECURITY;
 
 -- Helper functions to avoid recursive RLS lookups on users
-CREATE OR REPLACE FUNCTION auth.current_user_organization_id()
+CREATE OR REPLACE FUNCTION public.current_user_organization_id()
 RETURNS UUID
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public
 AS $$
   SELECT organization_id FROM public.users WHERE id = auth.uid();
 $$;
 
-CREATE OR REPLACE FUNCTION auth.current_user_role()
+CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS VARCHAR
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public
 AS $$
   SELECT role FROM public.users WHERE id = auth.uid();
 $$;
+
+REVOKE EXECUTE ON FUNCTION public.current_user_organization_id() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.current_user_role() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_organization_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated;
 
 -- RLS Policies: Users can view/edit own organization data
 CREATE POLICY users_own_org
   ON users
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY facilities_own_org
   ON facilities
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY inventory_items_own_org
   ON inventory_items
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY stock_levels_own_org
   ON stock_levels
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 CREATE POLICY stock_movements_own_org
   ON stock_movements
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 CREATE POLICY stock_lots_own_org
   ON stock_lots
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 CREATE POLICY suppliers_own_org
   ON suppliers
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY purchase_orders_own_org
   ON purchase_orders
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 CREATE POLICY purchase_order_items_own_org
   ON purchase_order_items
   FOR ALL
-  USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id())));
+  USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id())));
 
 CREATE POLICY audit_logs_own_org
   ON audit_logs
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY alerts_own_org
   ON alerts
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY departments_own_org
   ON departments
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 CREATE POLICY locations_own_org
   ON locations
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 CREATE POLICY reorder_rules_own_org
   ON reorder_rules
   FOR ALL
-  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = auth.current_user_organization_id()));
+  USING (facility_id IN (SELECT f.id FROM facilities f WHERE f.organization_id = public.current_user_organization_id()));
 
 -- Organizations table: Only admins can view/edit
 CREATE POLICY organizations_admin_only
   ON organizations
   FOR ALL
   USING (
-    auth.current_user_role() = 'admin'
-    AND id = auth.current_user_organization_id()
+    public.current_user_role() = 'admin'
+    AND id = public.current_user_organization_id()
   );
 
 -- ============================================================================

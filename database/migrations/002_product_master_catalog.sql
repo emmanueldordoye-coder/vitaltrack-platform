@@ -264,32 +264,32 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 CREATE POLICY categories_own_org
   ON categories
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id())
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id())
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY manufacturers_own_org
   ON manufacturers
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id())
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id())
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY vendors_own_org
   ON vendors
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id())
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id())
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY units_of_measure_own_org
   ON units_of_measure
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id())
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id())
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY products_own_org
   ON products
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id())
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id())
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 -- ============================================================================
 -- Triggers (Automatic Timestamp Updates)

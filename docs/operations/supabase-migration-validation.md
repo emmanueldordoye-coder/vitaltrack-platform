@@ -16,6 +16,8 @@ The workflow adapts the existing `database/migrations` layout into a temporary `
 
 Migration `004_project_lighthouse_security_hardening.sql` is a follow-up to PR #9. PR #9 merged `003_project_lighthouse_ordering_workflow.sql` into main before the security hardening was included, so `003` is now published migration history and must not be rewritten. Migration `004` applies the hardening in place without replacing or amending the merged migration.
 
+The first live staging validation attempt reached `supabase db push` and failed inside `001_init_schema.sql` before any successful Project Lighthouse migration validation run existed. The failure was caused by custom helper functions being created in Supabase's managed `auth` schema. Migration `001` was corrected before first successful deployment by moving those helpers to `public.current_user_organization_id()` and `public.current_user_role()`. Future migrations must not create custom objects in managed schemas such as `auth` or `storage`; the workflow checks migration files for that pattern before linking to Supabase.
+
 ## Required GitHub Secrets
 
 Add these secrets to the repository or the protected `staging` GitHub environment:
@@ -48,7 +50,7 @@ Do not use production values for these secrets.
 1. Open the repository's **Actions** tab.
 2. Select **Validate Supabase Migrations**.
 3. Choose **Run workflow**.
-4. Select the `security/project-lighthouse-hardening` branch.
+4. Select the `main` branch.
 5. Enter `VALIDATE_STAGING` in the confirmation field.
 6. Start the run.
 
@@ -62,7 +64,7 @@ The workflow performs these checks:
 2. Confirms the configured staging project ref matches the approved staging project ref.
 3. Installs the Supabase CLI and PostgreSQL client.
 4. Validates migration file order.
-5. Checks SQL files for static hazards such as merge conflict markers.
+5. Checks SQL files for static hazards such as merge conflict markers and custom object creation in Supabase-managed schemas.
 6. Links to the staging Supabase project.
 7. Runs `supabase db push --dry-run`.
 8. Applies all migrations to staging.
@@ -125,6 +127,7 @@ After a successful run, confirm in the Supabase dashboard:
 | `Configured staging project ref does not match the approved staging project ref` | The workflow target does not match the approved staging project guard. | Confirm both staging project ref secrets point to the same non-production project. |
 | `This workflow only runs when the confirmation input is VALIDATE_STAGING` | The manual confirmation input was blank or misspelled. | Re-run with exactly `VALIDATE_STAGING`. |
 | `failed to connect to postgres` or `password authentication failed` | Incorrect database password or project ref. | Verify `STAGING_SUPABASE_PROJECT_REF` and reset `STAGING_SUPABASE_DB_PASSWORD` if needed. |
+| `permission denied for schema auth` while creating a custom helper | A migration is attempting to create repository-owned objects in Supabase's managed `auth` schema. | Move custom helpers to an application-owned schema such as `public` and update references. Keep Supabase-native calls like `auth.uid()` fully qualified. |
 | `relation already exists`, `policy already exists`, or duplicate trigger errors | The target staging project has partial schema state but no matching migration history. | Use a fresh staging project or reset the dedicated staging database before rerunning. |
 | `Migration file ordering does not match` | A migration file was added, renamed, or removed without updating the validation workflow. | Review the new migration order and update the workflow intentionally. |
 | `Missing expected tables`, `Missing expected indexes`, or `RLS is not enabled` | A migration did not apply or the schema differs from the expected Project Lighthouse workflow. | Open the failed step logs, fix the migration, and rerun on a clean staging project. |
@@ -139,7 +142,7 @@ Preferred reset path:
 
 1. Delete and recreate the dedicated validation Supabase project, or create a new disposable staging project.
 2. Update `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD` in GitHub secrets.
-3. Re-run the workflow from the `security/project-lighthouse-hardening` branch.
+3. Re-run the workflow from the `main` branch.
 
 If the staging project must be preserved:
 

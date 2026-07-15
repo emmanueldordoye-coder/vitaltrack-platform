@@ -586,14 +586,14 @@ DROP POLICY IF EXISTS receiving_events_delete_block ON receiving_events;
 CREATE POLICY receiving_events_select_own_org
   ON receiving_events
   FOR SELECT
-  USING (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id());
 
 CREATE POLICY receiving_events_insert_own_org
   ON receiving_events
   FOR INSERT
   WITH CHECK (
-    organization_id = auth.current_user_organization_id()
-    AND auth.current_user_role() IN ('admin', 'manager')
+    organization_id = public.current_user_organization_id()
+    AND public.current_user_role() IN ('admin', 'manager')
   );
 
 CREATE POLICY receiving_events_update_block
