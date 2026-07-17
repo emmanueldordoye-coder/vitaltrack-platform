@@ -28,6 +28,9 @@ Add these secrets to the repository or the protected `staging` GitHub environmen
 | `STAGING_SUPABASE_PROJECT_REF` | Project ref for the staging or dedicated test Supabase project. |
 | `APPROVED_STAGING_SUPABASE_PROJECT_REF` | Approved staging project ref. The workflow fails if this does not match `STAGING_SUPABASE_PROJECT_REF`. |
 | `STAGING_SUPABASE_DB_PASSWORD` | Database password for the staging or dedicated test Supabase project. |
+| `STAGING_SUPABASE_DB_HOST` | Session-pooler host used by `psql` seed and validation steps. |
+| `STAGING_SUPABASE_DB_PORT` | Session-pooler port used by `psql` seed and validation steps. |
+| `STAGING_SUPABASE_DB_USER` | Session-pooler database user used by `psql` seed and validation steps. |
 
 Do not use production values for these secrets.
 
@@ -42,8 +45,15 @@ Do not use production values for these secrets.
 
 1. Open the GitHub repository.
 2. Go to **Settings** -> **Secrets and variables** -> **Actions**.
-3. Add `STAGING_SUPABASE_ACCESS_TOKEN`, `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD`.
+3. Add `STAGING_SUPABASE_ACCESS_TOKEN`, `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, `STAGING_SUPABASE_DB_PASSWORD`, `STAGING_SUPABASE_DB_HOST`, `STAGING_SUPABASE_DB_PORT`, and `STAGING_SUPABASE_DB_USER`.
 4. If the repository uses GitHub environments, add the same secrets under the `staging` environment and keep any approval rules enabled.
+
+For the pooler connection values, open the staging Supabase project and go to **Project Settings** -> **Database** -> **Connection string** -> **Session pooler**. Copy the host, port, and user values exactly from the session-pooler connection string:
+
+- `STAGING_SUPABASE_DB_HOST`: session-pooler host.
+- `STAGING_SUPABASE_DB_PORT`: session-pooler port.
+- `STAGING_SUPABASE_DB_USER`: session-pooler user.
+- `STAGING_SUPABASE_DB_PASSWORD`: the staging database password for that user.
 
 ## Trigger the Workflow
 
@@ -123,16 +133,16 @@ After a successful run, confirm in the Supabase dashboard:
 
 | Error | Likely Cause | Fix |
 | --- | --- | --- |
-| `Missing required GitHub secret` | One or more required secrets are not configured for Actions or the `staging` environment. | Add `STAGING_SUPABASE_ACCESS_TOKEN`, `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD`. |
+| `Missing required GitHub secret` | One or more required secrets are not configured for Actions or the `staging` environment. | Add `STAGING_SUPABASE_ACCESS_TOKEN`, `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, `STAGING_SUPABASE_DB_PASSWORD`, `STAGING_SUPABASE_DB_HOST`, `STAGING_SUPABASE_DB_PORT`, and `STAGING_SUPABASE_DB_USER`. |
 | `Configured staging project ref does not match the approved staging project ref` | The workflow target does not match the approved staging project guard. | Confirm both staging project ref secrets point to the same non-production project. |
 | `This workflow only runs when the confirmation input is VALIDATE_STAGING` | The manual confirmation input was blank or misspelled. | Re-run with exactly `VALIDATE_STAGING`. |
-| `failed to connect to postgres` or `password authentication failed` | Incorrect database password or project ref. | Verify `STAGING_SUPABASE_PROJECT_REF` and reset `STAGING_SUPABASE_DB_PASSWORD` if needed. |
+| `failed to connect to postgres` or `password authentication failed` | Incorrect database password, project ref, or session-pooler connection value. | Verify `STAGING_SUPABASE_PROJECT_REF`, `STAGING_SUPABASE_DB_HOST`, `STAGING_SUPABASE_DB_PORT`, `STAGING_SUPABASE_DB_USER`, and `STAGING_SUPABASE_DB_PASSWORD`. |
 | `permission denied for schema auth` while creating a custom helper | A migration is attempting to create repository-owned objects in Supabase's managed `auth` schema. | Move custom helpers to an application-owned schema such as `public` and update references. Keep Supabase-native calls like `auth.uid()` fully qualified. |
 | `relation already exists`, `policy already exists`, or duplicate trigger errors | The target staging project has partial schema state but no matching migration history. | Use a fresh staging project or reset the dedicated staging database before rerunning. |
 | `Migration file ordering does not match` | A migration file was added, renamed, or removed without updating the validation workflow. | Review the new migration order and update the workflow intentionally. |
 | `Missing expected tables`, `Missing expected indexes`, or `RLS is not enabled` | A migration did not apply or the schema differs from the expected Project Lighthouse workflow. | Open the failed step logs, fix the migration, and rerun on a clean staging project. |
 | `Expected 7 Dentira demo products` or `Expected 7 Dentira inventory levels` | Seed data failed or was modified unexpectedly. | Review the seed step output and keep the Dentira seed idempotent. |
-| Network or IPv6 connection failures from `psql` | The runner cannot reach the Supabase direct database host. | Confirm database networking settings and rerun. If needed, use a dedicated project without network restrictions. |
+| Network or IPv6 connection failures from `psql` | The runner cannot reach the Supabase direct database host or the pooler secrets are missing. | Use the session-pooler host, port, and user from **Project Settings** -> **Database** -> **Connection string** -> **Session pooler**. |
 
 ## Rollback or Reset Plan
 
@@ -141,7 +151,7 @@ Do not roll back production. This workflow is for staging or a dedicated validat
 Preferred reset path:
 
 1. Delete and recreate the dedicated validation Supabase project, or create a new disposable staging project.
-2. Update `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, and `STAGING_SUPABASE_DB_PASSWORD` in GitHub secrets.
+2. Update `STAGING_SUPABASE_PROJECT_REF`, `APPROVED_STAGING_SUPABASE_PROJECT_REF`, `STAGING_SUPABASE_DB_PASSWORD`, `STAGING_SUPABASE_DB_HOST`, `STAGING_SUPABASE_DB_PORT`, and `STAGING_SUPABASE_DB_USER` in GitHub secrets.
 3. Re-run the workflow from the `main` branch.
 
 If the staging project must be preserved:
