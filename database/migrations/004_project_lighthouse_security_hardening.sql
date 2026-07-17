@@ -50,7 +50,7 @@ CREATE OR REPLACE FUNCTION lighthouse_generate_suggested_orders(
   actor_id UUID DEFAULT auth.uid()
 )
 RETURNS TABLE (
-  suggested_order_id UUID,
+  out_suggested_order_id UUID,
   out_vendor_id UUID,
   out_location_id UUID,
   item_count INT,
@@ -204,7 +204,7 @@ BEGIN
   END LOOP;
 
   RETURN QUERY
-  SELECT so.id, so.vendor_id AS out_vendor_id, so.location_id AS out_location_id, COUNT(soi.id)::INT, so.suggested_subtotal, so.estimated_savings
+  SELECT so.id AS out_suggested_order_id, so.vendor_id AS out_vendor_id, so.location_id AS out_location_id, COUNT(soi.id)::INT, so.suggested_subtotal, so.estimated_savings
   FROM suggested_orders so
   LEFT JOIN suggested_order_items soi
     ON soi.suggested_order_id = so.id

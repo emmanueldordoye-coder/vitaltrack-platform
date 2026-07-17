@@ -537,7 +537,7 @@ DECLARE
   before_quantity DECIMAL(12, 2);
   after_quantity DECIMAL(12, 2);
 BEGIN
-  SELECT suggested_order_id
+  SELECT out_suggested_order_id
   INTO order_id
   FROM lighthouse_generate_suggested_orders(NULL, spoofed_actor_id)
   LIMIT 1;
