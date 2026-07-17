@@ -368,6 +368,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
 AS $$
+#variable_conflict use_column
 DECLARE
   vendor_location RECORD;
   new_suggested_order_id UUID;
