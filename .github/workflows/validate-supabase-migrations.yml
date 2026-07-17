@@ -150,7 +150,7 @@ jobs:
       - name: Reset staging database
         run: |
           set -euo pipefail
-          supabase --yes db reset --linked --password "$SUPABASE_DB_PASSWORD"
+          supabase --yes db reset --linked
 
       - name: Dry-run remote migration push
         run: |
