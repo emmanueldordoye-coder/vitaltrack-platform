@@ -357,9 +357,9 @@ CREATE OR REPLACE FUNCTION lighthouse_generate_suggested_orders(
   actor_id UUID DEFAULT auth.uid()
 )
 RETURNS TABLE (
-  suggested_order_id UUID,
-  vendor_id UUID,
-  location_id UUID,
+  out_suggested_order_id UUID,
+  out_vendor_id UUID,
+  out_location_id UUID,
   item_count INT,
   suggested_subtotal DECIMAL,
   estimated_savings DECIMAL
@@ -507,9 +507,9 @@ BEGIN
 
   RETURN QUERY
   SELECT
-    so.id,
-    so.vendor_id,
-    so.location_id,
+    so.id AS out_suggested_order_id,
+    so.vendor_id AS out_vendor_id,
+    so.location_id AS out_location_id,
     COUNT(soi.id)::INT,
     so.suggested_subtotal,
     so.estimated_savings
@@ -849,28 +849,28 @@ CREATE POLICY inventory_levels_own_org
   ON inventory_levels
   FOR ALL
   USING (
-    organization_id = auth.current_user_organization_id()
+    organization_id = public.current_user_organization_id()
     AND deleted_at IS NULL
   )
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY suggested_orders_own_org
   ON suggested_orders
   FOR ALL
   USING (
-    organization_id = auth.current_user_organization_id()
+    organization_id = public.current_user_organization_id()
     AND deleted_at IS NULL
   )
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY suggested_order_items_own_org
   ON suggested_order_items
   FOR ALL
   USING (
-    organization_id = auth.current_user_organization_id()
+    organization_id = public.current_user_organization_id()
     AND deleted_at IS NULL
   )
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 CREATE POLICY purchase_orders_own_org
   ON purchase_orders
@@ -879,14 +879,14 @@ CREATE POLICY purchase_orders_own_org
     COALESCE(
       organization_id,
       (SELECT f.organization_id FROM facilities f WHERE f.id = purchase_orders.facility_id)
-    ) = auth.current_user_organization_id()
+    ) = public.current_user_organization_id()
     AND deleted_at IS NULL
   )
   WITH CHECK (
     COALESCE(
       organization_id,
       (SELECT f.organization_id FROM facilities f WHERE f.id = purchase_orders.facility_id)
-    ) = auth.current_user_organization_id()
+    ) = public.current_user_organization_id()
   );
 
 CREATE POLICY purchase_order_items_own_org
@@ -900,7 +900,7 @@ CREATE POLICY purchase_order_items_own_org
       WHERE COALESCE(
         po.organization_id,
         (SELECT f.organization_id FROM facilities f WHERE f.id = po.facility_id)
-      ) = auth.current_user_organization_id()
+      ) = public.current_user_organization_id()
         AND po.deleted_at IS NULL
     )
   )
@@ -915,14 +915,14 @@ CREATE POLICY purchase_order_items_own_org
         FROM purchase_orders po
         WHERE po.id = purchase_order_items.purchase_order_id
       )
-    ) = auth.current_user_organization_id()
+    ) = public.current_user_organization_id()
   );
 
 CREATE POLICY receiving_events_own_org
   ON receiving_events
   FOR ALL
-  USING (organization_id = auth.current_user_organization_id())
-  WITH CHECK (organization_id = auth.current_user_organization_id());
+  USING (organization_id = public.current_user_organization_id())
+  WITH CHECK (organization_id = public.current_user_organization_id());
 
 -- ============================================================================
 -- Updated-at Triggers

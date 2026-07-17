@@ -129,6 +129,7 @@ psql $DATABASE_URL -f database/queries/common_queries.sql
   - 15 core tables (organizations, users, facilities, departments, locations, inventory_items, stock_levels, stock_movements, stock_lots, suppliers, purchase_orders, purchase_order_items, audit_logs, alerts, reorder_rules)
   - 30+ indexes optimized for queries
   - RLS policies enforcing multi-tenant isolation
+  - `public.current_user_organization_id()` and `public.current_user_role()` helper functions for tenant-scoped policies
   - Auto-update triggers for `updated_at` timestamps
 - **002_product_master_catalog.sql** - Normalized Product Master Catalog tables for products, categories, manufacturers, vendors, and units of measure.
 - **003_project_lighthouse_ordering_workflow.sql** - Dentira pilot ordering workflow tables and functions:
@@ -253,6 +254,8 @@ Seeds are designed to be:
 
 The Dentira pilot workflow is documented in [Project Lighthouse Ordering Workflow](../docs/project-lighthouse-ordering-workflow.md).
 
+The first live staging validation attempt for migrations `001` through `004` failed before any successful deployment because `001_init_schema.sql` attempted to create custom helper functions in Supabase's managed `auth` schema. Since no successful Project Lighthouse migration validation run existed yet, `001` was corrected in place before its first successful deployment by moving those helpers to the application-owned `public` schema. Migration `003` remains published migration history and must not be amended or replaced.
+
 Migration `004_project_lighthouse_security_hardening.sql` exists because PR #9 merged migration `003_project_lighthouse_ordering_workflow.sql` into main before the security hardening was included. Migration `003` is now published migration history and must not be amended or replaced. Apply `004` after `003` to harden the existing database objects in place.
 
 The database path is:
@@ -320,20 +323,14 @@ All 15 tables have RLS enabled with policies like:
 ```sql
 -- Users see only data from their organization
 CREATE POLICY users_own_org ON users
-  FOR ALL USING (
-    organization_id IN (
-      SELECT organization_id FROM users WHERE id = auth.uid()
-    )
-  );
+  FOR ALL USING (organization_id = public.current_user_organization_id());
 
 -- Stock levels filtered via facility → organization
 CREATE POLICY stock_levels_own_org ON stock_levels
   FOR ALL USING (
     facility_id IN (
       SELECT f.id FROM facilities f 
-      WHERE f.organization_id IN (
-        SELECT organization_id FROM users WHERE id = auth.uid()
-      )
+      WHERE f.organization_id = public.current_user_organization_id()
     )
   );
 ```

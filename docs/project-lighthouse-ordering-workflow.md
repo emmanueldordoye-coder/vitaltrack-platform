@@ -1,7 +1,7 @@
 # Project Lighthouse Ordering Workflow
 
 **Status**: Active  
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-07-15
 **Scope**: Dentira pilot database workflow for low-stock ordering
 
 ## Workflow
@@ -19,6 +19,8 @@ Project Lighthouse supports the ordering workflow already represented in the Den
 The workflow starts from Product Master Catalog rows in `products`, vendor details in `vendors`, and location-level thresholds in `inventory_levels`.
 
 Migration `004_project_lighthouse_security_hardening.sql` exists because PR #9 merged migration `003_project_lighthouse_ordering_workflow.sql` before the security hardening was included. Migration `003` is now part of published migration history and must not be rewritten; `004` safely replaces the workflow RPC definitions, low-stock read model, receiving policy, and grants in place.
+
+The first live staging validation reached migration `001` and failed before any successful Project Lighthouse deployment because custom helper functions were created in Supabase's managed `auth` schema. Migration `001` was corrected before first successful deployment by moving repository-owned helpers to `public.current_user_organization_id()` and `public.current_user_role()`. Supabase-native functions such as `auth.uid()` remain in the managed `auth` schema.
 
 `lighthouse_low_stock_products` exposes active inventory rows where `current_quantity` is at or below `reorder_point`.
 
@@ -46,7 +48,7 @@ Receiving is recorded in append-only `receiving_events`. Inserting a receiving e
 
 ## Multi-Tenant And RLS Model
 
-The workflow tables use `organization_id` for tenant isolation. Row Level Security policies restrict records to `auth.current_user_organization_id()`.
+The workflow tables use `organization_id` for tenant isolation. Row Level Security policies restrict records to `public.current_user_organization_id()`.
 
 Soft-deleted workflow rows are hidden from normal RLS reads by `deleted_at IS NULL`. The receiving table does not use soft delete because it represents inventory-affecting receipt history.
 
@@ -71,7 +73,7 @@ The ordering workflow and hardening migrations depend on:
 
 - `organizations`, `users`, `facilities`, `departments`, `locations`, `purchase_orders`, and `purchase_order_items` from `001_init_schema.sql`
 - `products`, `categories`, `vendors`, and `units_of_measure` from `002_product_master_catalog.sql`
-- `auth.current_user_organization_id()` and `update_updated_at_column()` from `001_init_schema.sql`
+- `public.current_user_organization_id()` and `update_updated_at_column()` from `001_init_schema.sql`
 - `003_project_lighthouse_ordering_workflow.sql` before `004_project_lighthouse_security_hardening.sql`, because the hardening migration replaces the workflow RPC definitions and low-stock view created by the ordering migration.
 
 ## Seed Process

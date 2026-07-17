@@ -20,12 +20,6 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
       APPROVED_SUPABASE_PROJECT_REF: ${{ secrets.APPROVED_STAGING_SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
-      PGHOST: db.${{ secrets.STAGING_SUPABASE_PROJECT_REF }}.supabase.co
-      PGPORT: "5432"
-      PGDATABASE: postgres
-      PGUSER: postgres
-      PGPASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
-      PGSSLMODE: require
 
     steps:
       - name: Refuse accidental production execution
@@ -59,13 +53,10 @@ jobs:
         with:
           version: 2.109.1
 
-      - name: Install PostgreSQL client
+      - name: Print tool versions
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
           supabase --version
-          psql --version
 
       - name: Validate migration file ordering
         run: |
@@ -127,6 +118,10 @@ jobs:
               echo "::error file=${file}::SQL file is empty."
               exit 1
             fi
+            if [[ "$file" == database/migrations/* ]] && grep -niE 'create[[:space:]]+(or[[:space:]]+replace[[:space:]]+)?(function|procedure|view|materialized[[:space:]]+view|table|type)[[:space:]]+(auth|storage)\.|create[[:space:]]+schema[[:space:]]+(if[[:space:]]+not[[:space:]]+exists[[:space:]]+)?(auth|storage)([[:space:];]|$)' "$file"; then
+              echo "::error file=${file}::Do not create custom objects in Supabase-managed schemas such as auth or storage."
+              exit 1
+            fi
           done
 
       - name: Prepare Supabase migration workspace
@@ -152,6 +147,11 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_REF" \
             --password "$SUPABASE_DB_PASSWORD"
 
+      - name: Reset staging database
+        run: |
+          set -euo pipefail
+          supabase --yes db reset --linked
+
       - name: Dry-run remote migration push
         run: |
           set -euo pipefail
@@ -165,13 +165,13 @@ jobs:
       - name: Run idempotent Dentira seed twice
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f database/seeds/004_project_lighthouse_dentira_demo.sql
-          psql -v ON_ERROR_STOP=1 -f database/seeds/004_project_lighthouse_dentira_demo.sql
+          supabase db query --linked --file database/seeds/004_project_lighthouse_dentira_demo.sql
+          supabase db query --linked --file database/seeds/004_project_lighthouse_dentira_demo.sql
 
       - name: Verify Project Lighthouse schema
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 <<'SQL'
+          cat > /tmp/verify_schema.sql <<'SQL'
           DO $$
           DECLARE
             missing_tables text[];
@@ -291,11 +291,12 @@ jobs:
             END IF;
           END $$;
           SQL
+          supabase db query --linked --file /tmp/verify_schema.sql
 
       - name: Verify seed data and low-stock detection
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 <<'SQL'
+          cat > /tmp/verify_seed.sql <<'SQL'
           DO $$
           DECLARE
             dentira_org_id uuid := 'd0000000-0000-0000-0000-000000000001';
@@ -330,11 +331,12 @@ jobs:
             END IF;
           END $$;
           SQL
+          supabase db query --linked --file /tmp/verify_seed.sql
 
       - name: Run tenant-isolation security validation
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f database/validation/005_project_lighthouse_security_validation.sql
+          supabase db query --linked --file database/validation/005_project_lighthouse_security_validation.sql
 
       - name: Print validation summary
         if: success()
