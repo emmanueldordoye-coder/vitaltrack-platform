@@ -172,13 +172,13 @@ jobs:
       - name: Run idempotent Dentira seed twice
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f database/seeds/004_project_lighthouse_dentira_demo.sql
-          psql -v ON_ERROR_STOP=1 -f database/seeds/004_project_lighthouse_dentira_demo.sql
+          supabase db execute --linked --file database/seeds/004_project_lighthouse_dentira_demo.sql
+          supabase db execute --linked --file database/seeds/004_project_lighthouse_dentira_demo.sql
 
       - name: Verify Project Lighthouse schema
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 <<'SQL'
+          cat > /tmp/verify_schema.sql <<'SQL'
           DO $$
           DECLARE
             missing_tables text[];
@@ -298,11 +298,12 @@ jobs:
             END IF;
           END $$;
           SQL
+          supabase db execute --linked --file /tmp/verify_schema.sql
 
       - name: Verify seed data and low-stock detection
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 <<'SQL'
+          cat > /tmp/verify_seed.sql <<'SQL'
           DO $$
           DECLARE
             dentira_org_id uuid := 'd0000000-0000-0000-0000-000000000001';
@@ -337,11 +338,12 @@ jobs:
             END IF;
           END $$;
           SQL
+          supabase db execute --linked --file /tmp/verify_seed.sql
 
       - name: Run tenant-isolation security validation
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f database/validation/005_project_lighthouse_security_validation.sql
+          supabase db execute --linked --file database/validation/005_project_lighthouse_security_validation.sql
 
       - name: Print validation summary
         if: success()
