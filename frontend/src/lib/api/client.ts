@@ -6,7 +6,8 @@ import type {
   CreateInventoryItemInput,
   CreatePurchaseOrderInput,
   Facility,
-  InventoryItem,
+  InventoryCatalogItem,
+  LegacyInventoryItem,
   ListFacilitiesQuery,
   ListInventoryQuery,
   ListPurchaseOrdersQuery,
@@ -73,17 +74,21 @@ export class VitalTrackApiClient {
     query?: Record<string, Primitive | undefined>;
     body?: unknown;
   }) {
-    const response = await fetch(`${this.baseUrl}${path}${toSearchParams(query)}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${this.baseUrl}${path}${toSearchParams(query)}`,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: "no-store",
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store",
-    });
+    );
 
-    const payload = (await response.json()) as ApiSuccessResponse<T> | ApiErrorResponse;
+    const payload = (await response.json()) as
+      ApiSuccessResponse<T> | ApiErrorResponse;
     if (!response.ok || !payload.success) {
       const errorPayload = payload as ApiErrorResponse;
       throw new ApiClientError({
@@ -118,7 +123,7 @@ export class VitalTrackApiClient {
   }
 
   listInventoryItems(query: ListInventoryQuery = {}) {
-    return this.request<InventoryItem[]>({
+    return this.request<InventoryCatalogItem[]>({
       path: "/inventory",
       query: {
         category: query.category,
@@ -130,7 +135,7 @@ export class VitalTrackApiClient {
   }
 
   createInventoryItem(input: CreateInventoryItemInput) {
-    return this.request<InventoryItem>({
+    return this.request<LegacyInventoryItem>({
       path: "/inventory",
       method: "POST",
       body: input,

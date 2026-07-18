@@ -124,7 +124,9 @@ export interface Database {
           notes?: string | null;
           metadata?: Json | null;
         };
-        Update: Partial<Database["public"]["Tables"]["inventory_items"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["inventory_items"]["Insert"]
+        >;
         Relationships: [];
       };
       suppliers: {
@@ -173,6 +175,165 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["suppliers"]["Insert"]>;
         Relationships: [];
       };
+      locations: {
+        Row: {
+          id: string;
+          facility_id: string;
+          department_id: string | null;
+          name: string;
+          location_code: string | null;
+          location_type: string | null;
+          parent_location_id: string | null;
+          capacity_units: number | null;
+          current_utilization: number | null;
+          temperature_controlled: boolean | null;
+          barcode: string | null;
+          notes: string | null;
+          is_active: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          department_id?: string | null;
+          name: string;
+          location_code?: string | null;
+          location_type?: string | null;
+          parent_location_id?: string | null;
+          capacity_units?: number | null;
+          current_utilization?: number | null;
+          temperature_controlled?: boolean | null;
+          barcode?: string | null;
+          notes?: string | null;
+          is_active?: boolean | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["locations"]["Insert"]>;
+        Relationships: [];
+      };
+      vendors: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          vendor_code: string | null;
+          contact_name: string | null;
+          email: string | null;
+          phone: string | null;
+          website: string | null;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          postal_code: string | null;
+          country: string | null;
+          payment_terms: string | null;
+          is_active: boolean | null;
+          metadata: Json | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          vendor_code?: string | null;
+          contact_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          website?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          postal_code?: string | null;
+          country?: string | null;
+          payment_terms?: string | null;
+          is_active?: boolean | null;
+          metadata?: Json | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["vendors"]["Insert"]>;
+        Relationships: [];
+      };
+      products: {
+        Row: {
+          id: string;
+          organization_id: string;
+          category_id: string;
+          manufacturer_id: string | null;
+          unit_of_measure_id: string;
+          sku: string;
+          name: string;
+          description: string | null;
+          gtin: string | null;
+          manufacturer_part_number: string | null;
+          brand_name: string | null;
+          product_type: string;
+          status: string;
+          requires_lot_tracking: boolean;
+          requires_serial_tracking: boolean;
+          requires_expiration_tracking: boolean;
+          is_active: boolean;
+          metadata: Json;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          category_id: string;
+          manufacturer_id?: string | null;
+          unit_of_measure_id: string;
+          sku: string;
+          name: string;
+          description?: string | null;
+          gtin?: string | null;
+          manufacturer_part_number?: string | null;
+          brand_name?: string | null;
+          product_type?: string;
+          status?: string;
+          requires_lot_tracking?: boolean;
+          requires_serial_tracking?: boolean;
+          requires_expiration_tracking?: boolean;
+          is_active?: boolean;
+          metadata?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["products"]["Insert"]>;
+        Relationships: [];
+      };
+      inventory_levels: {
+        Row: {
+          id: string;
+          organization_id: string;
+          facility_id: string;
+          location_id: string;
+          product_id: string;
+          current_quantity: number;
+          par_level: number;
+          reorder_point: number;
+          status: string | null;
+          last_counted_at: string | null;
+          metadata: Json | null;
+          created_at: string | null;
+          updated_at: string | null;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          facility_id: string;
+          location_id: string;
+          product_id: string;
+          current_quantity?: number;
+          par_level: number;
+          reorder_point: number;
+          last_counted_at?: string | null;
+          metadata?: Json | null;
+          deleted_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["inventory_levels"]["Insert"]
+        >;
+        Relationships: [];
+      };
       purchase_orders: {
         Row: {
           id: string;
@@ -206,7 +367,9 @@ export interface Database {
           created_by?: string | null;
           updated_by?: string | null;
         };
-        Update: Partial<Database["public"]["Tables"]["purchase_orders"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["purchase_orders"]["Insert"]
+        >;
         Relationships: [];
       };
       purchase_order_items: {
@@ -232,7 +395,9 @@ export interface Database {
           uom?: string | null;
           notes?: string | null;
         };
-        Update: Partial<Database["public"]["Tables"]["purchase_order_items"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["purchase_order_items"]["Insert"]
+        >;
         Relationships: [];
       };
     };
