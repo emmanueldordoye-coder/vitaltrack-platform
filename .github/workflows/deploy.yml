@@ -35,11 +35,14 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK_URL }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
-          APP_BASE_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.STAGING_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
           API_BASE_URL: ${{ secrets.STAGING_BACKEND_URL }}
           HEALTHCHECK_BEARER_TOKEN: ${{ secrets.STAGING_SMOKE_TEST_TOKEN }}
+          EXPECTED_GIT_SHA: ${{ github.sha }}
+          GIT_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
         run: ./scripts/deploy/deploy-staging.sh
 
       - name: Deploy to production

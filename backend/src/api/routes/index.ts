@@ -15,6 +15,7 @@ apiRouter.get("/health", (req, res) => {
     service: "vitaltrack-backend-api",
     status: "ok",
     version: env.apiVersion,
+    gitSha: env.gitSha,
   });
 });
 
