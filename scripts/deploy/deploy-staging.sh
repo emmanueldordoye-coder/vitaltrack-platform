@@ -1,7 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -z "${VERCEL_TOKEN:-}" || -z "${VERCEL_ORG_ID:-}" || -z "${VERCEL_PROJECT_ID:-}" ]]; then
+normalize_secret() {
+  local value="${1:-}"
+
+  # Remove carriage returns/newlines introduced while copying secrets.
+  value="$(printf '%s' "$value" | tr -d '\r\n')"
+
+  # Trim leading/trailing whitespace.
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  # Remove one matching pair of surrounding quotes if pasted into GitHub.
+  if [[ ${#value} -ge 2 ]]; then
+    if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+      value="${value:1:${#value}-2}"
+    elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+      value="${value:1:${#value}-2}"
+    fi
+  fi
+
+  printf '%s' "$value"
+}
+
+VERCEL_TOKEN="$(normalize_secret "${VERCEL_TOKEN:-}")"
+VERCEL_ORG_ID="$(normalize_secret "${VERCEL_ORG_ID:-}")"
+VERCEL_PROJECT_ID="$(normalize_secret "${VERCEL_PROJECT_ID:-}")"
+
+if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
   echo "Missing Vercel credentials (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID)." >&2
   exit 1
 fi
@@ -18,6 +44,15 @@ fi
 
 deploy_git_sha="${EXPECTED_GIT_SHA:-${GIT_SHA:-$(git rev-parse HEAD)}}"
 echo "Deploying git commit: ${deploy_git_sha}"
+
+echo "Verifying Vercel authentication..."
+echo "Vercel token length after normalization: ${#VERCEL_TOKEN}"
+if ! vercel_identity="$(npx vercel@latest whoami --token "$VERCEL_TOKEN" 2>&1)"; then
+  echo "$vercel_identity" >&2
+  echo "Vercel authentication failed after removing whitespace and surrounding quotes. Replace the GitHub staging environment secret VERCEL_TOKEN with the raw token value that succeeds with 'vercel whoami'." >&2
+  exit 1
+fi
+echo "Vercel authentication succeeded for: ${vercel_identity}"
 
 echo "Deploying frontend (Vercel) to staging..."
 pushd frontend >/dev/null
