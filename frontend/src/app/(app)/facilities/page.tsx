@@ -1,7 +1,8 @@
 import { createServerApiClient } from "@/lib/api/server";
 
-import { createFacilityAction, initialFacilityFormState } from "./actions";
+import { createFacilityAction } from "./actions";
 import { FacilityForm } from "./facility-form";
+import { initialFacilityFormState } from "./form-state";
 
 export default async function FacilitiesPage() {
   const apiClient = await createServerApiClient();

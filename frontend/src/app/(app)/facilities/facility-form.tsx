@@ -4,7 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 
 import { FormMessage } from "@/components/forms/form-message";
 
-import type { FacilityFormState } from "./actions";
+import type { FacilityFormState } from "./form-state";
 
 interface FacilityFormProps {
   action: (_prevState: FacilityFormState, formData: FormData) => Promise<FacilityFormState>;
