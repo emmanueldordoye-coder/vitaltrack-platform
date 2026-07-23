@@ -12,6 +12,8 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
+  GIT_SHA: z.string().min(1).optional(),
+  RENDER_GIT_COMMIT: z.string().min(1).optional(),
 });
 
 const parsedEnv = envSchema.safeParse({
@@ -23,6 +25,8 @@ const parsedEnv = envSchema.safeParse({
   SUPABASE_URL: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_ANON_KEY:
     process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  GIT_SHA: process.env.GIT_SHA,
+  RENDER_GIT_COMMIT: process.env.RENDER_GIT_COMMIT,
 });
 
 if (!parsedEnv.success) {
@@ -55,4 +59,5 @@ export const env = {
   supabaseUrl: values.SUPABASE_URL,
   supabaseAnonKey: values.SUPABASE_ANON_KEY,
   apiVersion: "v1",
+  gitSha: values.GIT_SHA ?? values.RENDER_GIT_COMMIT ?? null,
 } as const;

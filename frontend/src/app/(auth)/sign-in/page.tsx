@@ -1,4 +1,5 @@
-import { initialAuthFormState, signInAction } from "./actions";
+import { signInAction } from "./actions";
+import { initialAuthFormState } from "./form-state";
 import { SignInForm } from "./sign-in-form";
 
 export default function SignInPage() {

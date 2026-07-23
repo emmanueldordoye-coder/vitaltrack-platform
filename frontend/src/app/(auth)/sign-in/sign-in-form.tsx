@@ -4,7 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 
 import { FormMessage } from "@/components/forms/form-message";
 
-import type { AuthFormState } from "./actions";
+import type { AuthFormState } from "./form-state";
 
 interface SignInFormProps {
   action: (_prevState: AuthFormState, formData: FormData) => Promise<AuthFormState>;

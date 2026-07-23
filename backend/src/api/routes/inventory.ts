@@ -6,6 +6,11 @@ import { sanitizeLikePatternTerm } from "../filters.js";
 import { handleRoute } from "../route-handler.js";
 import { sendSuccess } from "../response.js";
 import { validate } from "../middleware/validate.js";
+import {
+  mapLighthouseInventoryItems,
+  type LighthouseInventoryLevelRecord,
+  type LighthouseVendorRecord,
+} from "../mappers/lighthouse-inventory.js";
 import { idParamSchema } from "../schemas/common.js";
 import {
   createInventoryItemSchema,
@@ -23,38 +28,82 @@ inventoryRouter.get(
   "/",
   validate({ query: listInventoryItemsQuerySchema }),
   handleRoute(async (req, res) => {
-    const { category, isActive, limit, search } =
-      req.context.validated?.query as InventoryQuery;
+    const { isActive, limit, search } = req.context.validated
+      ?.query as InventoryQuery;
 
     let query = req.context.supabase
-      .from("inventory_items")
-      .select("*")
+      .from("inventory_levels")
+      .select(
+        `
+          product_id,
+          current_quantity,
+          par_level,
+          reorder_point,
+          location_id,
+          products!inner (
+            id,
+            sku,
+            name,
+            manufacturer_part_number,
+            metadata
+          ),
+          locations!inner (
+            id,
+            name
+          ),
+          facilities!inner (
+            organization_id
+          )
+        `,
+      )
+      .eq("organization_id", req.context.organizationId!)
+      .eq("facilities.organization_id", req.context.organizationId!)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (category) {
-      query = query.eq("category", category);
-    }
-
     if (isActive !== undefined) {
-      query = query.eq("is_active", isActive);
+      query = query.eq("products.is_active", isActive);
     }
 
     if (search) {
       const sanitizedSearch = sanitizeLikePatternTerm(search);
 
       if (sanitizedSearch) {
-        query = query.or(`name.ilike.%${sanitizedSearch}%,sku.ilike.%${sanitizedSearch}%`);
+        query = query.or(
+          `name.ilike.%${sanitizedSearch}%,sku.ilike.%${sanitizedSearch}%,manufacturer_part_number.ilike.%${sanitizedSearch}%`,
+          { foreignTable: "products" },
+        );
       }
     }
 
-    const { data, error } = await query;
+    const { data, error } = (await query) as {
+      data: LighthouseInventoryLevelRecord[] | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (error) {
-      throwSupabaseError("Unable to list inventory items.", error);
+      throwSupabaseError("Unable to list Lighthouse inventory.", error);
     }
 
-    sendSuccess(req, res, data ?? []);
+    const { data: vendors, error: vendorsError } = (await req.context.supabase
+      .from("vendors")
+      .select("id, name, vendor_code")
+      .eq("organization_id", req.context.organizationId!)
+      .eq("is_active", true)) as {
+      data: LighthouseVendorRecord[] | null;
+      error: { code?: string; message: string } | null;
+    };
+
+    if (vendorsError) {
+      throwSupabaseError("Unable to list Lighthouse vendors.", vendorsError);
+    }
+
+    sendSuccess(
+      req,
+      res,
+      mapLighthouseInventoryItems(data ?? [], vendors ?? []),
+    );
   }),
 );
 
@@ -62,7 +111,9 @@ inventoryRouter.get(
   "/:id",
   validate({ params: idParamSchema }),
   handleRoute(async (req, res) => {
-    const { id } = req.context.validated?.params as z.infer<typeof idParamSchema>;
+    const { id } = req.context.validated?.params as z.infer<
+      typeof idParamSchema
+    >;
 
     const { data, error } = await req.context.supabase
       .from("inventory_items")

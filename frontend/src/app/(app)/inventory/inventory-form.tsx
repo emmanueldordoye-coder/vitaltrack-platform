@@ -4,7 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 
 import { FormMessage } from "@/components/forms/form-message";
 
-import type { InventoryFormState } from "./actions";
+import type { InventoryFormState } from "./form-state";
 
 interface InventoryFormProps {
   action: (_prevState: InventoryFormState, formData: FormData) => Promise<InventoryFormState>;

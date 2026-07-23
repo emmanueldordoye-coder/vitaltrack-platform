@@ -5,15 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerApiClient } from "@/lib/api/server";
 import { createFacilityFormSchema } from "@/lib/validation/forms";
 
-export interface FacilityFormState {
-  status: "idle" | "success" | "error";
-  message: string | null;
-}
-
-export const initialFacilityFormState: FacilityFormState = {
-  status: "idle",
-  message: null,
-};
+import type { FacilityFormState } from "./form-state";
 
 export const createFacilityAction = async (
   _prevState: FacilityFormState,
