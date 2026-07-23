@@ -98,6 +98,19 @@ curl --fail --silent --show-error -X POST "$render_deploy_url" >/dev/null
 echo "Render deploy hook triggered for git commit: ${deploy_git_sha}"
 
 echo "Applying database changes (Supabase) to staging..."
+npx supabase@latest init --force
+rm -rf supabase/migrations
+mkdir -p supabase/migrations
+cp database/migrations/001_init_schema.sql \
+  supabase/migrations/20260625000001_init_schema.sql
+cp database/migrations/002_product_master_catalog.sql \
+  supabase/migrations/20260708000002_product_master_catalog.sql
+cp database/migrations/003_project_lighthouse_ordering_workflow.sql \
+  supabase/migrations/20260709000003_project_lighthouse_ordering_workflow.sql
+cp database/migrations/004_project_lighthouse_security_hardening.sql \
+  supabase/migrations/20260712000004_project_lighthouse_security_hardening.sql
+ls -1 supabase/migrations
+
 if [[ -n "${SUPABASE_DB_PASSWORD:-}" ]]; then
   npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
   npx supabase@latest db push --password "$SUPABASE_DB_PASSWORD"
