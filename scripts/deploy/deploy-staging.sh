@@ -45,6 +45,34 @@ fi
 deploy_git_sha="${EXPECTED_GIT_SHA:-${GIT_SHA:-$(git rev-parse HEAD)}}"
 echo "Deploying git commit: ${deploy_git_sha}"
 
+supabase_url="https://${SUPABASE_PROJECT_REF}.supabase.co"
+echo "Resolving Supabase anon key for the staging frontend build..."
+supabase_api_keys_json="$(
+  npx supabase@latest projects api-keys \
+    --project-ref "$SUPABASE_PROJECT_REF" \
+    --reveal \
+    --output json
+)"
+supabase_anon_key="$(
+  SUPABASE_API_KEYS_JSON="$supabase_api_keys_json" python3 <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["SUPABASE_API_KEYS_JSON"])
+keys = data if isinstance(data, list) else data.get("apiKeys", [])
+
+for item in keys:
+    name = str(item.get("name") or item.get("type") or item.get("role") or "").lower()
+    if name in {"anon", "publishable"} or name.endswith("_anon"):
+        print(item.get("api_key") or item.get("apiKey") or item.get("key") or "")
+        break
+PY
+)"
+if [[ -z "$supabase_anon_key" ]]; then
+  echo "Unable to resolve the staging Supabase anon key." >&2
+  exit 1
+fi
+
 echo "Verifying Vercel authentication..."
 echo "Vercel token length after normalization: ${#VERCEL_TOKEN}"
 if ! vercel_identity="$(npx vercel@latest whoami --token "$VERCEL_TOKEN" 2>&1)"; then
@@ -57,12 +85,31 @@ echo "Vercel authentication succeeded for: ${vercel_identity}"
 echo "Deploying frontend (Vercel) to staging..."
 pushd frontend >/dev/null
 npx vercel pull --yes --environment=preview --token "$VERCEL_TOKEN"
+export NEXT_PUBLIC_GIT_SHA="$deploy_git_sha"
+export NEXT_PUBLIC_SUPABASE_URL="$supabase_url"
+export NEXT_PUBLIC_SUPABASE_ANON_KEY="$supabase_anon_key"
+if [[ -n "${API_BASE_URL:-}" ]]; then
+  export NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL"
+  export API_BASE_URL
+fi
+echo "Building frontend locally for Vercel staging..."
+npx vercel build --yes --target=preview --token "$VERCEL_TOKEN"
+vercel_deploy_args=(
+  --prebuilt
+  --yes
+  --token "$VERCEL_TOKEN"
+  --env "NEXT_PUBLIC_GIT_SHA=${deploy_git_sha}"
+  --env "NEXT_PUBLIC_SUPABASE_URL=${supabase_url}"
+  --env "NEXT_PUBLIC_SUPABASE_ANON_KEY=${supabase_anon_key}"
+)
+if [[ -n "${API_BASE_URL:-}" ]]; then
+  vercel_deploy_args+=(
+    --env "NEXT_PUBLIC_API_BASE_URL=${API_BASE_URL}"
+    --env "API_BASE_URL=${API_BASE_URL}"
+  )
+fi
 vercel_output="$(
-  npx vercel deploy \
-    --yes \
-    --token "$VERCEL_TOKEN" \
-    --env "NEXT_PUBLIC_GIT_SHA=${deploy_git_sha}" \
-    --build-env "NEXT_PUBLIC_GIT_SHA=${deploy_git_sha}"
+  npx vercel deploy "${vercel_deploy_args[@]}"
 )"
 echo "$vercel_output"
 vercel_deployment_url="$(
