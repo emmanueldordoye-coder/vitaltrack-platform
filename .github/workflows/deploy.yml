@@ -41,6 +41,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
           API_BASE_URL: ${{ secrets.STAGING_BACKEND_URL }}
           HEALTHCHECK_BEARER_TOKEN: ${{ secrets.STAGING_SMOKE_TEST_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           EXPECTED_GIT_SHA: ${{ github.sha }}
           GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}

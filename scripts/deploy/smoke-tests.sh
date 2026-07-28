@@ -6,8 +6,21 @@ if [[ -z "${APP_BASE_URL:-}" || -z "${API_BASE_URL:-}" ]]; then
   exit 1
 fi
 
+frontend_curl_args=(
+  --fail
+  --silent
+  --show-error
+  --connect-timeout 10
+  --max-time 30
+)
+if [[ -n "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]]; then
+  frontend_curl_args+=(
+    -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}"
+  )
+fi
+
 echo "Smoke test: frontend reachable"
-curl --fail --silent --show-error --connect-timeout 10 --max-time 30 "$APP_BASE_URL" >/dev/null
+curl "${frontend_curl_args[@]}" "$APP_BASE_URL" >/dev/null
 
 verify_git_sha() {
   local name="$1"
@@ -16,8 +29,16 @@ verify_git_sha() {
   local actual_sha
 
   actual_sha="$(
-    curl --fail --silent --show-error --connect-timeout 10 --max-time 30 "$url" \
-      | python3 -c 'import json, sys; payload=json.load(sys.stdin); data=payload.get("data", payload); print(data.get("gitSha") or data.get("git_sha") or "")'
+    curl "${frontend_curl_args[@]}" "$url" \
+      | python3 -c 'import json, sys; raw=sys.stdin.read()
+try:
+    payload=json.loads(raw)
+except json.JSONDecodeError:
+    print("Expected JSON from health endpoint but received non-JSON. If this is a Vercel preview deployment, configure VERCEL_AUTOMATION_BYPASS_SECRET for smoke tests.", file=sys.stderr)
+    print(f"Response prefix: {raw[:160]!r}", file=sys.stderr)
+    raise SystemExit(1)
+data=payload.get("data", payload)
+print(data.get("gitSha") or data.get("git_sha") or "")'
   )"
 
   if [[ "$actual_sha" != "$expected_sha" ]]; then
