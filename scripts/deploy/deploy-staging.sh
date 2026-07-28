@@ -84,6 +84,8 @@ echo "Vercel authentication succeeded for: ${vercel_identity}"
 
 echo "Deploying frontend (Vercel) to staging..."
 pushd frontend >/dev/null
+echo "Installing frontend dependencies for Vercel prebuilt deployment..."
+npm install --workspaces=false --include=dev --no-audit --no-fund --package-lock=false
 npx vercel pull --yes --environment=preview --token "$VERCEL_TOKEN"
 export NEXT_PUBLIC_GIT_SHA="$deploy_git_sha"
 export NEXT_PUBLIC_SUPABASE_URL="$supabase_url"
@@ -108,6 +110,23 @@ if [[ -n "${API_BASE_URL:-}" ]]; then
     --env "API_BASE_URL=${API_BASE_URL}"
   )
 fi
+popd >/dev/null
+echo "Preparing repository-root Vercel prebuilt output..."
+python3 <<'PY'
+from pathlib import Path
+import shutil
+
+root = Path.cwd()
+frontend_vercel = root / "frontend" / ".vercel"
+root_vercel = root / ".vercel"
+
+if root_vercel.exists():
+    shutil.rmtree(root_vercel)
+
+root_vercel.mkdir(parents=True)
+shutil.copy2(frontend_vercel / "project.json", root_vercel / "project.json")
+shutil.copytree(frontend_vercel / "output", root_vercel / "output")
+PY
 vercel_output="$(
   npx vercel deploy "${vercel_deploy_args[@]}"
 )"
@@ -125,7 +144,6 @@ echo "Vercel deployment URL: ${vercel_deployment_url}"
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   echo "frontend_url=${vercel_deployment_url}" >> "$GITHUB_OUTPUT"
 fi
-popd >/dev/null
 
 echo "Deploying backend (Render) to staging..."
 render_deploy_url="$(
