@@ -116,7 +116,7 @@ fi
 
 echo "Smoke test: protected facilities endpoint denies unauthenticated requests"
 body_file="$(mktemp)"
-curl_request "unauthenticated facilities endpoint" "$API_BASE_URL/facilities" "$body_file"
+curl_request "unauthenticated facilities endpoint" "$API_BASE_URL/api/v1/facilities" "$body_file"
 status_code="$CURL_HTTP_STATUS"
 rm -f "$body_file"
 if [[ "$status_code" != "401" && "$status_code" != "403" ]]; then
@@ -127,7 +127,7 @@ fi
 if [[ -n "${EXPECTED_GIT_SHA:-}" ]]; then
   echo "Smoke test: backend git SHA"
   for attempt in {1..30}; do
-    if verify_git_sha "backend" "$API_BASE_URL/health" "$EXPECTED_GIT_SHA"; then
+    if verify_git_sha "backend" "$API_BASE_URL/api/v1/health" "$EXPECTED_GIT_SHA"; then
       break
     fi
 
@@ -144,7 +144,7 @@ if [[ -n "${HEALTHCHECK_BEARER_TOKEN:-}" ]]; then
   body_file="$(mktemp)"
   curl_request \
     "authenticated facilities endpoint" \
-    "$API_BASE_URL/facilities?limit=1" \
+    "$API_BASE_URL/api/v1/facilities?limit=1" \
     "$body_file" \
     -H "Authorization: Bearer ${HEALTHCHECK_BEARER_TOKEN}"
   auth_status="$CURL_HTTP_STATUS"
