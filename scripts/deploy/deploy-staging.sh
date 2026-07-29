@@ -26,6 +26,8 @@ normalize_secret() {
 VERCEL_TOKEN="$(normalize_secret "${VERCEL_TOKEN:-}")"
 VERCEL_ORG_ID="$(normalize_secret "${VERCEL_ORG_ID:-}")"
 VERCEL_PROJECT_ID="$(normalize_secret "${VERCEL_PROJECT_ID:-}")"
+SUPABASE_DB_PASSWORD="$(normalize_secret "${SUPABASE_DB_PASSWORD:-}")"
+export SUPABASE_DB_PASSWORD
 
 if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
   echo "Missing Vercel credentials (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID)." >&2
@@ -37,8 +39,8 @@ if [[ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" ]]; then
-  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF)." >&2
+if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" || -z "$SUPABASE_DB_PASSWORD" ]]; then
+  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD)." >&2
   exit 1
 fi
 
@@ -176,13 +178,8 @@ cp database/migrations/004_project_lighthouse_security_hardening.sql \
   supabase/migrations/20260712000004_project_lighthouse_security_hardening.sql
 ls -1 supabase/migrations
 
-if [[ -n "${SUPABASE_DB_PASSWORD:-}" ]]; then
-  npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-  npx supabase@latest db push --password "$SUPABASE_DB_PASSWORD"
-else
-  npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF"
-  npx supabase@latest db push
-fi
+npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF"
+npx supabase@latest db push
 
 echo "Running staging smoke tests..."
 APP_BASE_URL="$vercel_deployment_url" EXPECTED_GIT_SHA="$deploy_git_sha" ./scripts/deploy/smoke-tests.sh

@@ -16,8 +16,8 @@ if [[ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" ]]; then
-  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF)." >&2
+if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" || -z "${SUPABASE_DB_PASSWORD:-}" ]]; then
+  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD)." >&2
   exit 1
 fi
 
@@ -31,6 +31,7 @@ echo "Deploying backend (Render) to production..."
 curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK_URL" >/dev/null
 
 echo "Applying database changes (Supabase) to production..."
+export SUPABASE_DB_PASSWORD
 npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF"
 npx supabase@latest db push
 
