@@ -15,9 +15,10 @@ export const getServerSessionUser = async (): Promise<SessionUser | null> => {
 
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
 
-  if (!session?.access_token) {
+  if (sessionError || !session?.access_token) {
     return null;
   }
 

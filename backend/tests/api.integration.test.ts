@@ -119,17 +119,19 @@ const createFakeSupabase = (
   },
 });
 
-const createRequestContextMiddleware = ({
-  accessToken = "token-123",
-  organizationId = "org-123",
-  userId = "user-123",
-  supabase = createFakeSupabase({}),
-}: {
+const createRequestContextMiddleware = (options: {
   accessToken?: string;
   organizationId?: string;
   userId?: string;
   supabase?: ReturnType<typeof createFakeSupabase>;
 }): RequestHandler => {
+  const accessToken =
+    "accessToken" in options ? options.accessToken : "token-123";
+  const organizationId =
+    "organizationId" in options ? options.organizationId : "org-123";
+  const userId = "userId" in options ? options.userId : "user-123";
+  const supabase = options.supabase ?? createFakeSupabase({});
+
   return (req, _res, next) => {
     req.context = {
       requestId: "req-test",

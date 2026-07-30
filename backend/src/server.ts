@@ -5,4 +5,7 @@ app.listen(env.port, () => {
   process.stdout.write(
     `VitalTrack backend API listening on port ${env.port} (api ${env.apiVersion})\n`,
   );
+  process.stdout.write(
+    `VitalTrack backend Supabase project ref: ${env.supabaseProjectRef ?? "unknown"}\n`,
+  );
 });

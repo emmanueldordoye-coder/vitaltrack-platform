@@ -13,6 +13,21 @@ const serverEnvSchema = z.object({
   API_BASE_URL: z.string().url().optional(),
 });
 
+const normalizeApiBaseUrl = (value: string) => {
+  const url = new URL(value);
+  const pathname = url.pathname.replace(/\/+$/, "");
+
+  if (!pathname) {
+    url.pathname = "/api/v1";
+  } else if (pathname !== "/api/v1") {
+    throw new Error(
+      "API base URL must be either the backend origin or end with exactly one /api/v1 segment.",
+    );
+  }
+
+  return url.toString().replace(/\/$/, "");
+};
+
 const publicEnv = publicEnvSchema.parse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -26,6 +41,8 @@ const serverEnv = serverEnvSchema.parse({
 export const env = {
   supabaseUrl: publicEnv.NEXT_PUBLIC_SUPABASE_URL,
   supabaseAnonKey: publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  publicApiBaseUrl: publicEnv.NEXT_PUBLIC_API_BASE_URL,
-  apiBaseUrl: serverEnv.API_BASE_URL ?? publicEnv.NEXT_PUBLIC_API_BASE_URL,
+  publicApiBaseUrl: normalizeApiBaseUrl(publicEnv.NEXT_PUBLIC_API_BASE_URL),
+  apiBaseUrl: normalizeApiBaseUrl(
+    serverEnv.API_BASE_URL ?? publicEnv.NEXT_PUBLIC_API_BASE_URL,
+  ),
 } as const;

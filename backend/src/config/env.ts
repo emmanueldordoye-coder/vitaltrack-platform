@@ -1,6 +1,8 @@
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
+import { getSupabaseProjectRef } from "./auth-diagnostics.js";
+
 loadEnv({ path: ".env.local" });
 loadEnv();
 
@@ -57,6 +59,7 @@ export const env = {
   corsAllowedOrigins,
   logLevel: values.LOG_LEVEL,
   supabaseUrl: values.SUPABASE_URL,
+  supabaseProjectRef: getSupabaseProjectRef(values.SUPABASE_URL),
   supabaseAnonKey: values.SUPABASE_ANON_KEY,
   apiVersion: "v1",
   gitSha: values.GIT_SHA ?? values.RENDER_GIT_COMMIT ?? null,

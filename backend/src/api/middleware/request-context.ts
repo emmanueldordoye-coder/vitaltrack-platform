@@ -2,7 +2,15 @@ import { randomUUID } from "node:crypto";
 
 import type { NextFunction, Request, Response } from "express";
 
-import { createRequestScopedSupabaseClient } from "../../config/supabase.js";
+import {
+  getJwtDiagnostics,
+  type JwtDiagnostics,
+} from "../../config/auth-diagnostics.js";
+import { env } from "../../config/env.js";
+import {
+  createRequestScopedSupabaseClient,
+  type RequestScopedSupabaseClient,
+} from "../../config/supabase.js";
 import { AppError } from "../errors.js";
 
 const getBearerToken = (authorizationHeader?: string) => {
@@ -23,7 +31,43 @@ const getBearerToken = (authorizationHeader?: string) => {
   return token;
 };
 
-export const assignRequestContext = (
+type SupabaseClientFactory = (
+  accessToken?: string,
+) => RequestScopedSupabaseClient;
+
+const logAuthDiagnostics = ({
+  event,
+  requestId,
+  token,
+  reason,
+}: {
+  event: string;
+  requestId: string;
+  token?: string;
+  reason?: string;
+}) => {
+  const jwt = getJwtDiagnostics(token);
+
+  console.warn("VitalTrack auth diagnostic", {
+    event,
+    requestId,
+    backendProjectRef: env.supabaseProjectRef,
+    tokenAudience: jwt.audience,
+    tokenExpiresAt: jwt.expiresAt,
+    tokenIssuer: jwt.issuer,
+    tokenIssuerProjectRef: jwt.issuerProjectRef,
+    reason,
+  });
+};
+
+const issuerMatchesBackendProject = (jwt: JwtDiagnostics) =>
+  !jwt.issuerProjectRef ||
+  !env.supabaseProjectRef ||
+  jwt.issuerProjectRef === env.supabaseProjectRef;
+
+export const createAssignRequestContext = (
+  createSupabaseClient: SupabaseClientFactory = createRequestScopedSupabaseClient,
+) => (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -34,7 +78,7 @@ export const assignRequestContext = (
       res.setHeader("x-request-id", requestId);
       req.context = {
         requestId,
-        supabase: createRequestScopedSupabaseClient(),
+        supabase: createSupabaseClient(),
         validated: {},
       };
 
@@ -49,10 +93,34 @@ export const assignRequestContext = (
       // Validate the JWT with a clean Supabase client. Supplying the bearer
       // token both as a global Authorization header and as getUser(jwt) can
       // make authentication behavior dependent on header-merging details.
-      const authClient = createRequestScopedSupabaseClient();
+      const jwt = getJwtDiagnostics(accessToken);
+      if (!issuerMatchesBackendProject(jwt)) {
+        logAuthDiagnostics({
+          event: "auth_token_project_mismatch",
+          requestId,
+          token: accessToken,
+          reason: "Token issuer project does not match backend Supabase project.",
+        });
+        next(
+          new AppError({
+            statusCode: 401,
+            code: "AUTH_FAILED",
+            message: "Unable to validate the provided access token.",
+          }),
+        );
+        return;
+      }
+
+      const authClient = createSupabaseClient();
       const { data, error } = await authClient.auth.getUser(accessToken);
 
       if (error || !data.user) {
+        logAuthDiagnostics({
+          event: "auth_token_validation_failed",
+          requestId,
+          token: accessToken,
+          reason: error?.message,
+        });
         next(
           new AppError({
             statusCode: 401,
@@ -71,7 +139,7 @@ export const assignRequestContext = (
 
       // Use a separate request-scoped client carrying the validated token for
       // all RLS-protected database operations that follow.
-      const supabase = createRequestScopedSupabaseClient(accessToken);
+      const supabase = createSupabaseClient(accessToken);
       req.context.supabase = supabase;
       req.context.user = data.user;
 
@@ -82,6 +150,12 @@ export const assignRequestContext = (
         .maybeSingle();
 
       if (membershipError) {
+        logAuthDiagnostics({
+          event: "auth_membership_lookup_failed",
+          requestId,
+          token: accessToken,
+          reason: membershipError.message,
+        });
         next(
           new AppError({
             statusCode: 403,
@@ -97,6 +171,12 @@ export const assignRequestContext = (
       }
 
       if (!membership?.organization_id) {
+        logAuthDiagnostics({
+          event: "auth_membership_missing",
+          requestId,
+          token: accessToken,
+          reason: "No public.users organization_id was found for the authenticated user.",
+        });
         next(
           new AppError({
             statusCode: 403,
@@ -114,3 +194,5 @@ export const assignRequestContext = (
     }
   })();
 };
+
+export const assignRequestContext = createAssignRequestContext();
