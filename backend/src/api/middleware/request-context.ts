@@ -39,17 +39,18 @@ export const assignRequestContext = (
       };
 
       const accessToken = getBearerToken(req.header("authorization"));
-      const supabase = createRequestScopedSupabaseClient(accessToken);
-
       req.context.accessToken = accessToken;
-      req.context.supabase = supabase;
 
       if (!accessToken) {
         next();
         return;
       }
 
-      const { data, error } = await supabase.auth.getUser(accessToken);
+      // Validate the JWT with a clean Supabase client. Supplying the bearer
+      // token both as a global Authorization header and as getUser(jwt) can
+      // make authentication behavior dependent on header-merging details.
+      const authClient = createRequestScopedSupabaseClient();
+      const { data, error } = await authClient.auth.getUser(accessToken);
 
       if (error || !data.user) {
         next(
@@ -68,6 +69,10 @@ export const assignRequestContext = (
         return;
       }
 
+      // Use a separate request-scoped client carrying the validated token for
+      // all RLS-protected database operations that follow.
+      const supabase = createRequestScopedSupabaseClient(accessToken);
+      req.context.supabase = supabase;
       req.context.user = data.user;
 
       const { data: membership, error: membershipError } = await supabase
