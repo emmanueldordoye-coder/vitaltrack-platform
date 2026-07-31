@@ -27,7 +27,6 @@ VERCEL_TOKEN="$(normalize_secret "${VERCEL_TOKEN:-}")"
 VERCEL_ORG_ID="$(normalize_secret "${VERCEL_ORG_ID:-}")"
 VERCEL_PROJECT_ID="$(normalize_secret "${VERCEL_PROJECT_ID:-}")"
 SUPABASE_DB_PASSWORD="$(normalize_secret "${SUPABASE_DB_PASSWORD:-}")"
-SUPABASE_DB_URL="$(normalize_secret "${SUPABASE_DB_URL:-}")"
 export SUPABASE_DB_PASSWORD
 
 if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
@@ -40,8 +39,8 @@ if [[ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" || -z "$SUPABASE_DB_PASSWORD" || -z "$SUPABASE_DB_URL" ]]; then
-  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD, SUPABASE_DB_URL)." >&2
+if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" || -z "$SUPABASE_DB_PASSWORD" ]]; then
+  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD)." >&2
   exit 1
 fi
 
@@ -180,9 +179,23 @@ cp database/migrations/004_project_lighthouse_security_hardening.sql \
 ls -1 supabase/migrations
 
 npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF"
+echo "Resolving Supabase project region for pooler connection..."
+supabase_project_region="$(
+  SUPABASE_ACCESS_TOKEN="$SUPABASE_ACCESS_TOKEN" \
+  SUPABASE_PROJECT_REF="$SUPABASE_PROJECT_REF" \
+  python3 <<'PY'
+import json, os, urllib.request
+url = "https://api.supabase.com/v1/projects/{}".format(os.environ["SUPABASE_PROJECT_REF"])
+req = urllib.request.Request(url, headers={"Authorization": "Bearer " + os.environ["SUPABASE_ACCESS_TOKEN"]})
+with urllib.request.urlopen(req) as resp:
+    data = json.load(resp)
+print(data["region"])
+PY
+)"
 shell_options="$-"
 set +x
-npx supabase@latest db push --db-url "$SUPABASE_DB_URL"
+supabase_pooler_url="postgresql://postgres.${SUPABASE_PROJECT_REF}:${SUPABASE_DB_PASSWORD}@aws-0-${supabase_project_region}.pooler.supabase.com:5432/postgres"
+npx supabase@latest db push --db-url "$supabase_pooler_url"
 if [[ "$shell_options" == *x* ]]; then
   set -x
 fi
