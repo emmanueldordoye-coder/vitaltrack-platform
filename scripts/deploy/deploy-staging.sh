@@ -179,19 +179,12 @@ PY
 curl --fail --silent --show-error -X POST "$render_deploy_url" >/dev/null
 echo "Render deploy hook triggered for git commit: ${deploy_git_sha}"
 
-if [[ -n "$SUPABASE_DB_PASSWORD" ]]; then
-  echo "Applying database changes (Supabase) to staging..."
-  prepare_supabase_migrations
-  npx supabase@latest link \
-    --project-ref "$SUPABASE_PROJECT_REF" \
-    --password "$SUPABASE_DB_PASSWORD"
-  npx supabase@latest db push --linked --include-all --password "$SUPABASE_DB_PASSWORD"
-elif [[ -n "$SUPABASE_DB_DIRECT_URL" ]]; then
+if [[ -n "$SUPABASE_DB_DIRECT_URL" ]]; then
   echo "Applying database changes (Supabase) to staging via direct database URL..."
   prepare_supabase_migrations
   npx supabase@latest db push --db-url "$SUPABASE_DB_DIRECT_URL"
 else
-  echo "Skipping staging Supabase migrations because neither SUPABASE_DB_PASSWORD nor SUPABASE_DB_DIRECT_URL is configured."
+  echo "Skipping staging Supabase migrations because SUPABASE_DB_DIRECT_URL is not configured."
 fi
 
 echo "Running staging smoke tests..."

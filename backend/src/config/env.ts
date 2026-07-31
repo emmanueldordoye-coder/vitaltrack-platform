@@ -7,7 +7,9 @@ loadEnv({ path: ".env.local" });
 loadEnv();
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   API_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   CORS_ALLOWED_ORIGINS: z.string().optional(),
@@ -24,7 +26,8 @@ const parsedEnv = envSchema.safeParse({
   API_TIMEOUT_MS: process.env.API_TIMEOUT_MS,
   CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS,
   LOG_LEVEL: process.env.LOG_LEVEL,
-  SUPABASE_URL: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+  SUPABASE_URL:
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_ANON_KEY:
     process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   GIT_SHA: process.env.GIT_SHA,
@@ -62,5 +65,5 @@ export const env = {
   supabaseProjectRef: getSupabaseProjectRef(values.SUPABASE_URL),
   supabaseAnonKey: values.SUPABASE_ANON_KEY,
   apiVersion: "v1",
-  gitSha: values.GIT_SHA ?? values.RENDER_GIT_COMMIT ?? null,
+  gitSha: values.RENDER_GIT_COMMIT ?? values.GIT_SHA ?? null,
 } as const;

@@ -8,6 +8,8 @@ fi
 
 CONNECT_TIMEOUT_SECONDS=10
 MAX_TIME_SECONDS=30
+BACKEND_SHA_MAX_ATTEMPTS="${BACKEND_SHA_MAX_ATTEMPTS:-30}"
+BACKEND_SHA_RETRY_SECONDS="${BACKEND_SHA_RETRY_SECONDS:-10}"
 
 frontend_curl_args=(
 )
@@ -20,6 +22,8 @@ fi
 CURL_HTTP_STATUS=""
 CURL_ELAPSED_TIME=""
 CURL_EXIT_CODE=""
+LAST_GIT_SHA=""
+AUTHENTICATED_SMOKE_STATUS="not_configured"
 
 curl_request() {
   local request_name="$1"
@@ -73,7 +77,7 @@ curl_request() {
 
 echo "Smoke test: frontend reachable"
 body_file="$(mktemp)"
-curl_request "frontend reachable" "$APP_BASE_URL" "$body_file" "${frontend_curl_args[@]}"
+curl_request "frontend reachable" "$APP_BASE_URL" "$body_file" "${frontend_curl_args[@]+"${frontend_curl_args[@]}"}"
 rm -f "$body_file"
 if [[ ! "$CURL_HTTP_STATUS" =~ ^[23] ]]; then
   echo "Expected frontend reachability check to return 2xx/3xx, got $CURL_HTTP_STATUS." >&2
@@ -90,6 +94,11 @@ verify_git_sha() {
 
   body_file="$(mktemp)"
   curl_request "${name} git SHA" "$url" "$body_file" "$@"
+  if [[ ! "$CURL_HTTP_STATUS" =~ ^2 ]]; then
+    echo "Expected 2xx from ${name} health endpoint, got $CURL_HTTP_STATUS." >&2
+    rm -f "$body_file"
+    return 1
+  fi
   actual_sha="$(
     python3 -c 'import json, pathlib, sys; raw=pathlib.Path(sys.argv[1]).read_text()
 try:
@@ -102,16 +111,45 @@ data=payload.get("data", payload)
 print(data.get("gitSha") or data.get("git_sha") or "")' "$body_file"
   )"
   rm -f "$body_file"
+  LAST_GIT_SHA="$actual_sha"
 
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     echo "Expected ${name} git SHA ${expected_sha}, got ${actual_sha:-<empty>}." >&2
     return 1
   fi
+
+  echo "${name} git SHA matched expected commit ${expected_sha}."
+}
+
+wait_for_git_sha() {
+  local name="$1"
+  local url="$2"
+  local expected_sha="$3"
+  shift 3
+
+  echo "Waiting for ${name} git SHA ${expected_sha}."
+  echo "Retry policy: attempts=${BACKEND_SHA_MAX_ATTEMPTS} interval=${BACKEND_SHA_RETRY_SECONDS}s"
+
+  for ((attempt = 1; attempt <= BACKEND_SHA_MAX_ATTEMPTS; attempt++)); do
+    echo "${name} git SHA attempt ${attempt}/${BACKEND_SHA_MAX_ATTEMPTS}"
+    if verify_git_sha "$name" "$url" "$expected_sha" "$@"; then
+      return 0
+    fi
+
+    if (( attempt == BACKEND_SHA_MAX_ATTEMPTS )); then
+      echo "${name} did not reach expected git SHA ${expected_sha} after ${BACKEND_SHA_MAX_ATTEMPTS} attempts." >&2
+      echo "Last observed ${name} git SHA: ${LAST_GIT_SHA:-<empty>}." >&2
+      echo "Render deploy hook may not have deployed the requested commit; inspect the Render staging service deploy history and logs." >&2
+      return 1
+    fi
+
+    sleep "$BACKEND_SHA_RETRY_SECONDS"
+  done
 }
 
 if [[ -n "${EXPECTED_GIT_SHA:-}" ]]; then
   echo "Smoke test: frontend git SHA"
-  verify_git_sha "frontend" "$APP_BASE_URL/api/health" "$EXPECTED_GIT_SHA" "${frontend_curl_args[@]}"
+  verify_git_sha "frontend" "$APP_BASE_URL/api/health" "$EXPECTED_GIT_SHA" "${frontend_curl_args[@]+"${frontend_curl_args[@]}"}"
 fi
 
 echo "Smoke test: protected facilities endpoint denies unauthenticated requests"
@@ -126,17 +164,7 @@ fi
 
 if [[ -n "${EXPECTED_GIT_SHA:-}" ]]; then
   echo "Smoke test: backend git SHA"
-  for attempt in {1..30}; do
-    if verify_git_sha "backend" "$API_BASE_URL/api/v1/health" "$EXPECTED_GIT_SHA"; then
-      break
-    fi
-
-    if [[ "$attempt" == "30" ]]; then
-      exit 1
-    fi
-
-    sleep 10
-  done
+  wait_for_git_sha "backend" "$API_BASE_URL/api/v1/health" "$EXPECTED_GIT_SHA"
 fi
 
 if [[ -n "${HEALTHCHECK_BEARER_TOKEN:-}" ]]; then
@@ -175,6 +203,7 @@ PY
 )"
 
   if [[ "$token_expiry_status" == "expired" ]]; then
+    AUTHENTICATED_SMOKE_STATUS="skipped_expired_token"
     echo "Warning: HEALTHCHECK_BEARER_TOKEN is expired; skipping authenticated smoke test." >&2
     echo "To fix: update the STAGING_SMOKE_TEST_TOKEN (or PRODUCTION_SMOKE_TEST_TOKEN) GitHub" >&2
     echo "secret with a fresh Supabase access token for the smoke-test service account." >&2
@@ -195,11 +224,28 @@ PY
       echo "Warning: authenticated smoke test returned 401. The HEALTHCHECK_BEARER_TOKEN" >&2
       echo "may be invalid or issued for a different Supabase project. Update the" >&2
       echo "STAGING_SMOKE_TEST_TOKEN or PRODUCTION_SMOKE_TEST_TOKEN secret." >&2
+      AUTHENTICATED_SMOKE_STATUS="skipped_invalid_token"
     elif [[ "$auth_status" != "200" ]]; then
       echo "Expected 200 from authenticated facilities endpoint, got $auth_status." >&2
       exit 1
+    else
+      AUTHENTICATED_SMOKE_STATUS="passed"
     fi
   fi
 fi
 
-echo "Smoke tests passed."
+echo "Required smoke tests passed."
+case "$AUTHENTICATED_SMOKE_STATUS" in
+  passed)
+    echo "Authenticated smoke test: passed."
+    ;;
+  skipped_expired_token)
+    echo "Authenticated smoke test: skipped because HEALTHCHECK_BEARER_TOKEN is expired. Refresh the STAGING_SMOKE_TEST_TOKEN GitHub secret."
+    ;;
+  skipped_invalid_token)
+    echo "Authenticated smoke test: skipped because HEALTHCHECK_BEARER_TOKEN was rejected. Refresh the STAGING_SMOKE_TEST_TOKEN GitHub secret."
+    ;;
+  not_configured)
+    echo "Authenticated smoke test: skipped because HEALTHCHECK_BEARER_TOKEN is not configured."
+    ;;
+esac
