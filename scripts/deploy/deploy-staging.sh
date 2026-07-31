@@ -26,6 +26,7 @@ normalize_secret() {
 VERCEL_TOKEN="$(normalize_secret "${VERCEL_TOKEN:-}")"
 VERCEL_ORG_ID="$(normalize_secret "${VERCEL_ORG_ID:-}")"
 VERCEL_PROJECT_ID="$(normalize_secret "${VERCEL_PROJECT_ID:-}")"
+SUPABASE_DB_PASSWORD="$(normalize_secret "${SUPABASE_DB_PASSWORD:-}")"
 SUPABASE_DB_DIRECT_URL="$(normalize_secret "${SUPABASE_DB_DIRECT_URL:-}")"
 
 if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
@@ -45,6 +46,21 @@ fi
 
 deploy_git_sha="${EXPECTED_GIT_SHA:-${GIT_SHA:-$(git rev-parse HEAD)}}"
 echo "Deploying git commit: ${deploy_git_sha}"
+
+prepare_supabase_migrations() {
+  npx supabase@latest init --force
+  rm -rf supabase/migrations
+  mkdir -p supabase/migrations
+  cp database/migrations/001_init_schema.sql \
+    supabase/migrations/20260625000001_init_schema.sql
+  cp database/migrations/002_product_master_catalog.sql \
+    supabase/migrations/20260708000002_product_master_catalog.sql
+  cp database/migrations/003_project_lighthouse_ordering_workflow.sql \
+    supabase/migrations/20260709000003_project_lighthouse_ordering_workflow.sql
+  cp database/migrations/004_project_lighthouse_security_hardening.sql \
+    supabase/migrations/20260712000004_project_lighthouse_security_hardening.sql
+  ls -1 supabase/migrations
+}
 
 supabase_url="https://${SUPABASE_PROJECT_REF}.supabase.co"
 echo "Resolving Supabase anon key for the staging frontend build..."
@@ -163,25 +179,19 @@ PY
 curl --fail --silent --show-error -X POST "$render_deploy_url" >/dev/null
 echo "Render deploy hook triggered for git commit: ${deploy_git_sha}"
 
-if [[ -n "$SUPABASE_DB_DIRECT_URL" ]]; then
+if [[ -n "$SUPABASE_DB_PASSWORD" ]]; then
   echo "Applying database changes (Supabase) to staging..."
-  npx supabase@latest init --force
-  rm -rf supabase/migrations
-  mkdir -p supabase/migrations
-  cp database/migrations/001_init_schema.sql \
-    supabase/migrations/20260625000001_init_schema.sql
-  cp database/migrations/002_product_master_catalog.sql \
-    supabase/migrations/20260708000002_product_master_catalog.sql
-  cp database/migrations/003_project_lighthouse_ordering_workflow.sql \
-    supabase/migrations/20260709000003_project_lighthouse_ordering_workflow.sql
-  cp database/migrations/004_project_lighthouse_security_hardening.sql \
-    supabase/migrations/20260712000004_project_lighthouse_security_hardening.sql
-  ls -1 supabase/migrations
-
+  prepare_supabase_migrations
+  npx supabase@latest link \
+    --project-ref "$SUPABASE_PROJECT_REF" \
+    --password "$SUPABASE_DB_PASSWORD"
+  npx supabase@latest db push --linked --include-all --password "$SUPABASE_DB_PASSWORD"
+elif [[ -n "$SUPABASE_DB_DIRECT_URL" ]]; then
+  echo "Applying database changes (Supabase) to staging via direct database URL..."
+  prepare_supabase_migrations
   npx supabase@latest db push --db-url "$SUPABASE_DB_DIRECT_URL"
 else
-  echo "Skipping staging Supabase migrations because SUPABASE_DB_DIRECT_URL is not configured."
-  echo "GitHub-hosted runners cannot use the Supabase pooler for 'supabase db push'; configure the direct database URL when migrations must run during deploy."
+  echo "Skipping staging Supabase migrations because neither SUPABASE_DB_PASSWORD nor SUPABASE_DB_DIRECT_URL is configured."
 fi
 
 echo "Running staging smoke tests..."

@@ -4,7 +4,7 @@ This project deploys with:
 
 - **Frontend**: Vercel
 - **Backend**: Render (deploy hook)
-- **Database**: Supabase (`supabase db push`) when a direct database URL is configured for the workflow environment
+- **Database**: Supabase (`supabase db push`) using the project ref + database password when available, with direct database URL fallback
 
 ## GitHub Actions workflow
 
@@ -20,13 +20,14 @@ Use `.github/workflows/deploy.yml` via **workflow_dispatch** with:
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
-- `SUPABASE_ACCESS_TOKEN`
 
 ### Staging
 
 - `RENDER_STAGING_DEPLOY_HOOK_URL`
-- `SUPABASE_STAGING_PROJECT_REF`
-- `STAGING_SUPABASE_DB_DIRECT_URL` (optional; required only when staging deploys should run `supabase db push`)
+- `STAGING_SUPABASE_ACCESS_TOKEN`
+- `STAGING_SUPABASE_PROJECT_REF`
+- `STAGING_SUPABASE_DB_PASSWORD` (preferred when staging deploys should run `supabase db push`)
+- `STAGING_SUPABASE_DB_DIRECT_URL` (optional fallback for staging database deploys)
 - `STAGING_FRONTEND_URL`
 - `STAGING_BACKEND_URL`
 - `STAGING_SMOKE_TEST_TOKEN` (optional but recommended)
@@ -34,8 +35,10 @@ Use `.github/workflows/deploy.yml` via **workflow_dispatch** with:
 ### Production
 
 - `RENDER_PRODUCTION_DEPLOY_HOOK_URL`
+- `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PRODUCTION_PROJECT_REF`
-- `PRODUCTION_SUPABASE_DB_DIRECT_URL` (optional; required only when production deploys should run `supabase db push`)
+- `PRODUCTION_SUPABASE_DB_PASSWORD` (preferred when production deploys should run `supabase db push`)
+- `PRODUCTION_SUPABASE_DB_DIRECT_URL` (optional fallback for production database deploys)
 - `PRODUCTION_FRONTEND_URL`
 - `PRODUCTION_BACKEND_URL`
 - `PRODUCTION_SMOKE_TEST_TOKEN` (optional but recommended)
@@ -71,4 +74,4 @@ export CONFIRM_PRODUCTION_DEPLOY=true
 
 ## Supabase migration note
 
-GitHub-hosted runners cannot use the Supabase pooler for `supabase db push`. If the target project uses Supabase network restrictions, configure `STAGING_SUPABASE_DB_DIRECT_URL` or `PRODUCTION_SUPABASE_DB_DIRECT_URL` with the direct database connection string from **Project Settings -> Database -> Connection string** (including `sslmode=require`). When that secret is not configured, the deploy workflow skips the migration step and continues with the frontend, backend, and smoke-test stages.
+The deploy scripts now prefer the same authenticated Supabase CLI flow used by migration validation (`supabase link` + `supabase db push --linked`) whenever the project ref and database password are configured. If a deployment environment cannot use that flow, configure `STAGING_SUPABASE_DB_DIRECT_URL` or `PRODUCTION_SUPABASE_DB_DIRECT_URL` with the direct database connection string from **Project Settings -> Database -> Connection string** (including `sslmode=require`) as a fallback. When neither credential path is configured, the deploy workflow skips the migration step and continues with the frontend, backend, and smoke-test stages.
