@@ -3,7 +3,9 @@ import { ApiClientError } from "@/lib/api/client";
 import { createServerApiClient } from "@/lib/api/server";
 
 const DashboardAuthError = ({ error }: { error: ApiClientError }) => {
-  const isMissingOrganization = error.status === 403;
+  const isMissingOrganization = error.code === "AUTH_ORGANIZATION_REQUIRED";
+  const isWorkspaceLookupFailure =
+    error.code === "AUTH_WORKSPACE_LOOKUP_FAILED";
 
   return (
     <section className="space-y-6">
@@ -19,12 +21,16 @@ const DashboardAuthError = ({ error }: { error: ApiClientError }) => {
         <h2 className="font-semibold">
           {isMissingOrganization
             ? "Organization access required"
-            : "Session validation required"}
+            : isWorkspaceLookupFailure
+              ? "Workspace validation required"
+              : "Session validation required"}
         </h2>
         <p className="mt-2">
           {isMissingOrganization
             ? "This user is not assigned to an active organization yet. Ask an administrator to add the user to the Dentira staging organization, then sign out and sign back in."
-            : "VitalTrack could not validate this session with the staging backend. Sign out, clear stale staging cookies if needed, and sign back in."}
+            : isWorkspaceLookupFailure
+              ? "VitalTrack validated this session but could not load the organization workspace from the staging backend."
+              : "VitalTrack could not validate this session with the staging backend. Sign out, clear stale staging cookies if needed, and sign back in."}
         </p>
       </div>
     </section>

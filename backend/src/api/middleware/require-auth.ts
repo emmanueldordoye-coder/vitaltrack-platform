@@ -11,8 +11,8 @@ export const requireAuthenticatedUser = (
     next(
       new AppError({
         statusCode: 401,
-        code: "UNAUTHORIZED",
-        message: "A valid Supabase access token is required for this endpoint.",
+        code: "AUTH_HEADER_MISSING",
+        message: "Authorization bearer token is required for this endpoint.",
       }),
     );
     return;
@@ -22,8 +22,9 @@ export const requireAuthenticatedUser = (
     next(
       new AppError({
         statusCode: 403,
-        code: "FORBIDDEN",
-        message: "Authenticated user does not have an active organization context.",
+        code: "AUTH_ORGANIZATION_REQUIRED",
+        message:
+          "Authenticated user does not have an active organization context.",
       }),
     );
     return;

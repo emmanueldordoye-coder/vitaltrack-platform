@@ -158,6 +158,8 @@ test("GET /api/v1/health reports the Render commit when available", async () => 
 
   assert.equal(response.status, 200);
   assert.equal(response.body.data.gitSha, "render-sha");
+  assert.equal(response.body.data.gitShaSource, "RENDER_GIT_COMMIT");
+  assert.equal(response.body.data.supabaseProjectRef, "example");
 });
 
 test("POST /api/v1/facilities uses the authenticated organization context", async () => {
@@ -213,7 +215,7 @@ test("GET /api/v1/facilities rejects unauthorized access", async () => {
   const response = await supertest(app).get("/api/v1/facilities");
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "UNAUTHORIZED");
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
 });
 
 test("GET /api/v1/facilities rejects authenticated users without an organization context", async () => {
@@ -229,7 +231,7 @@ test("GET /api/v1/facilities rejects authenticated users without an organization
   const response = await supertest(app).get("/api/v1/facilities");
 
   assert.equal(response.status, 403);
-  assert.equal(response.body.error.code, "FORBIDDEN");
+  assert.equal(response.body.error.code, "AUTH_ORGANIZATION_REQUIRED");
 });
 
 test("GET /api/v1/facilities/:id returns 404 when RLS hides another tenant's row", async () => {
@@ -303,7 +305,7 @@ test("GET /api/v1/inventory rejects unauthorized access", async () => {
   const response = await supertest(app).get("/api/v1/inventory");
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "UNAUTHORIZED");
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
 });
 
 test("GET /api/v1/inventory/:id returns 404 when RLS hides another tenant's row", async () => {
@@ -379,7 +381,7 @@ test("GET /api/v1/purchase-orders rejects unauthorized access", async () => {
   const response = await supertest(app).get("/api/v1/purchase-orders");
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "UNAUTHORIZED");
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
 });
 
 test("GET /api/v1/purchase-orders/:id returns 404 when RLS hides another tenant's row", async () => {

@@ -18,10 +18,12 @@ describe("DashboardPage", () => {
   it("renders dashboard counts when backend API calls succeed", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listFacilities: jest.fn().mockResolvedValue([{ id: "facility-1" }]),
-      listInventoryItems: jest.fn().mockResolvedValue([
-        { product_id: "product-1" },
-        { product_id: "product-2" },
-      ]),
+      listInventoryItems: jest
+        .fn()
+        .mockResolvedValue([
+          { product_id: "product-1" },
+          { product_id: "product-2" },
+        ]),
       listPurchaseOrders: jest.fn().mockResolvedValue([]),
     } as never);
 
@@ -38,8 +40,8 @@ describe("DashboardPage", () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listFacilities: jest.fn().mockRejectedValue(
         new ApiClientError({
-          code: "AUTH_FAILED",
-          message: "Unable to validate the provided access token.",
+          code: "AUTH_TOKEN_INVALID",
+          message: "Access token is invalid or expired.",
           status: 401,
         }),
       ),
@@ -59,7 +61,7 @@ describe("DashboardPage", () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listFacilities: jest.fn().mockRejectedValue(
         new ApiClientError({
-          code: "FORBIDDEN",
+          code: "AUTH_ORGANIZATION_REQUIRED",
           message:
             "Authenticated user does not have an active organization context.",
           status: 403,
@@ -71,9 +73,35 @@ describe("DashboardPage", () => {
 
     render(await DashboardPage());
 
-    expect(screen.getByText("Organization access required")).toBeInTheDocument();
+    expect(
+      screen.getByText("Organization access required"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/not assigned to an active organization/i),
+    ).toBeInTheDocument();
+  });
+
+  it("distinguishes workspace lookup failures from authentication failures", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listFacilities: jest.fn().mockRejectedValue(
+        new ApiClientError({
+          code: "AUTH_WORKSPACE_LOOKUP_FAILED",
+          message:
+            "Unable to resolve organization context for the authenticated user.",
+          status: 403,
+        }),
+      ),
+      listInventoryItems: jest.fn(),
+      listPurchaseOrders: jest.fn(),
+    } as never);
+
+    render(await DashboardPage());
+
+    expect(
+      screen.getByText("Workspace validation required"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/could not load the organization workspace/i),
     ).toBeInTheDocument();
   });
 });

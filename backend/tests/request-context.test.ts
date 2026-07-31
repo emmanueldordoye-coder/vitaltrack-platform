@@ -8,13 +8,11 @@ process.env.NODE_ENV = "test";
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_ANON_KEY ??= "test-anon-key";
 
-const { requireAuthenticatedUser } = await import(
-  "../src/api/middleware/require-auth.js"
-);
+const { requireAuthenticatedUser } =
+  await import("../src/api/middleware/require-auth.js");
 const { errorHandler } = await import("../src/api/middleware/error-handler.js");
-const { createAssignRequestContext } = await import(
-  "../src/api/middleware/request-context.js"
-);
+const { createAssignRequestContext } =
+  await import("../src/api/middleware/request-context.js");
 
 type AuthResult = {
   data: {
@@ -125,6 +123,27 @@ test("request context accepts a valid staging-style Supabase token", async () =>
   assert.deepEqual(observedClientTokens, [undefined, undefined, accessToken]);
 });
 
+test("request context returns 401 when the bearer token is missing", async () => {
+  const observedClientTokens: Array<string | undefined> = [];
+  const app = createAppWithRequestContext({
+    authResult: {
+      data: { user: null },
+      error: null,
+    },
+    membershipResult: {
+      data: { organization_id: "org-current" },
+      error: null,
+    },
+    observedClientTokens,
+  });
+
+  const response = await supertest(app).get("/protected");
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
+  assert.deepEqual(observedClientTokens, [undefined]);
+});
+
 test("request context rejects invalid Supabase tokens with 401", async () => {
   const observedClientTokens: Array<string | undefined> = [];
   const app = createAppWithRequestContext({
@@ -144,7 +163,7 @@ test("request context rejects invalid Supabase tokens with 401", async () => {
     .set("Authorization", `Bearer ${createJwt()}`);
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "AUTH_FAILED");
+  assert.equal(response.body.error.code, "AUTH_TOKEN_INVALID");
   assert.deepEqual(observedClientTokens, [undefined, undefined]);
 });
 
@@ -179,7 +198,7 @@ test("request context rejects mismatched Supabase token issuers with safe diagno
       .set("Authorization", `Bearer ${accessToken}`);
 
     assert.equal(response.status, 401);
-    assert.equal(response.body.error.code, "AUTH_FAILED");
+    assert.equal(response.body.error.code, "AUTH_TOKEN_PROJECT_MISMATCH");
     assert.deepEqual(observedClientTokens, [undefined]);
     assert.equal(JSON.stringify(diagnostics).includes(accessToken), false);
     assert.equal(JSON.stringify(diagnostics).includes("other-project"), true);
@@ -210,6 +229,6 @@ test("request context returns 403 when an authenticated user has no organization
     .set("Authorization", `Bearer ${accessToken}`);
 
   assert.equal(response.status, 403);
-  assert.equal(response.body.error.code, "FORBIDDEN");
+  assert.equal(response.body.error.code, "AUTH_ORGANIZATION_REQUIRED");
   assert.equal(response.body.error.message.includes("organization"), true);
 });

@@ -16,6 +16,8 @@ apiRouter.get("/health", (req, res) => {
     status: "ok",
     version: env.apiVersion,
     gitSha: env.gitSha,
+    gitShaSource: env.gitShaSource,
+    supabaseProjectRef: env.supabaseProjectRef,
   });
 });
 

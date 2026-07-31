@@ -66,4 +66,9 @@ export const env = {
   supabaseAnonKey: values.SUPABASE_ANON_KEY,
   apiVersion: "v1",
   gitSha: values.RENDER_GIT_COMMIT ?? values.GIT_SHA ?? null,
+  gitShaSource: values.RENDER_GIT_COMMIT
+    ? "RENDER_GIT_COMMIT"
+    : values.GIT_SHA
+      ? "GIT_SHA"
+      : null,
 } as const;

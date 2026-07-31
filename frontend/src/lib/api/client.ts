@@ -41,6 +41,18 @@ export class ApiClientError extends Error {
   }
 }
 
+const parseApiResponse = async <T>(response: Response) => {
+  try {
+    return (await response.json()) as ApiSuccessResponse<T> | ApiErrorResponse;
+  } catch {
+    throw new ApiClientError({
+      message: "Backend returned a non-JSON response.",
+      code: "API_RESPONSE_INVALID",
+      status: response.status,
+    });
+  }
+};
+
 const toSearchParams = (query?: Record<string, Primitive | undefined>) => {
   if (!query) {
     return "";
@@ -74,9 +86,10 @@ export class VitalTrackApiClient {
     query?: Record<string, Primitive | undefined>;
     body?: unknown;
   }) {
-    const response = await fetch(
-      `${this.baseUrl}${path}${toSearchParams(query)}`,
-      {
+    const url = `${this.baseUrl}${path}${toSearchParams(query)}`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
@@ -84,11 +97,16 @@ export class VitalTrackApiClient {
         },
         body: body === undefined ? undefined : JSON.stringify(body),
         cache: "no-store",
-      },
-    );
+      });
+    } catch {
+      throw new ApiClientError({
+        message: "Unable to reach the staging backend API.",
+        code: "API_NETWORK_OR_CORS_ERROR",
+        status: 0,
+      });
+    }
 
-    const payload = (await response.json()) as
-      ApiSuccessResponse<T> | ApiErrorResponse;
+    const payload = await parseApiResponse<T>(response);
     if (!response.ok || !payload.success) {
       const errorPayload = payload as ApiErrorResponse;
       throw new ApiClientError({
