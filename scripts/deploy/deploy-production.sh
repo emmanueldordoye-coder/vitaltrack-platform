@@ -17,8 +17,10 @@ if [[ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]]; then
 fi
 
 if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_REF:-}" ]]; then
-  echo "Missing Supabase credentials (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF)." >&2
-  exit 1
+  echo "Warning: SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF not set; skipping database migration." >&2
+  SKIP_DB_MIGRATION=true
+else
+  SKIP_DB_MIGRATION=false
 fi
 
 echo "Deploying frontend (Vercel) to production..."
@@ -31,8 +33,12 @@ echo "Deploying backend (Render) to production..."
 curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK_URL" >/dev/null
 
 echo "Applying database changes (Supabase) to production..."
-npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF"
-npx supabase@latest db push
+if [[ "$SKIP_DB_MIGRATION" == "true" ]]; then
+  echo "Skipping database migration (no Supabase credentials)."
+else
+  npx supabase@latest link --project-ref "$SUPABASE_PROJECT_REF"
+  npx supabase@latest db push
+fi
 
 echo "Running production smoke tests..."
 ./scripts/deploy/smoke-tests.sh
