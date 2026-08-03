@@ -32,6 +32,8 @@ docs/
 │   ├── disaster-recovery.md
 │   ├── scaling.md
 │   └── security.md
+├── validation/
+│   └── project-lighthouse-mvp-browser-validation.md
 ├── user-guide/
 │   ├── getting-started.md
 │   ├── inventory-management.md
@@ -62,6 +64,7 @@ docs/
 - [Monitoring & Alerting](operations/monitoring.md)
 - [Disaster Recovery](operations/disaster-recovery.md)
 - [Scaling Guide](operations/scaling.md)
+- [Project Lighthouse MVP Browser Validation](validation/project-lighthouse-mvp-browser-validation.md)
 
 ### For Users
 
