@@ -1,13 +1,29 @@
+import {
+  BackendAuthError,
+  isBackendAuthError,
+} from "@/components/auth/backend-auth-error";
 import { createServerApiClient } from "@/lib/api/server";
 
 export default async function PurchaseOrdersPage() {
   const apiClient = await createServerApiClient();
-  const purchaseOrders = await apiClient.listPurchaseOrders({ limit: 50 });
+  let purchaseOrders;
+
+  try {
+    purchaseOrders = await apiClient.listPurchaseOrders({ limit: 50 });
+  } catch (error) {
+    if (isBackendAuthError(error)) {
+      return <BackendAuthError error={error} />;
+    }
+
+    throw error;
+  }
 
   return (
     <section className="space-y-4">
       <header>
-        <h1 className="text-2xl font-semibold text-slate-900">Purchase Orders</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Purchase Orders
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
           Review issued orders and delivery status from the backend service.
         </p>
@@ -29,7 +45,8 @@ export default async function PurchaseOrdersPage() {
                 <td className="px-4 py-3">{order.po_number}</td>
                 <td className="px-4 py-3">{order.status ?? "—"}</td>
                 <td className="px-4 py-3">
-                  {order.total_amount === null || order.total_amount === undefined
+                  {order.total_amount === null ||
+                  order.total_amount === undefined
                     ? "—"
                     : `${order.currency ?? "USD"} ${order.total_amount.toFixed(2)}`}
                 </td>

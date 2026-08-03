@@ -55,6 +55,29 @@ describe("DashboardPage", () => {
     expect(
       screen.getByText(/could not validate this session/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("invalid_or_expired_jwt")).toBeInTheDocument();
+  });
+
+  it("renders the wrong Supabase project diagnostic instead of crashing", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listFacilities: jest.fn().mockRejectedValue(
+        new ApiClientError({
+          code: "AUTH_TOKEN_PROJECT_MISMATCH",
+          message: "Access token was issued by a different Supabase project.",
+          status: 401,
+        }),
+      ),
+      listInventoryItems: jest.fn(),
+      listPurchaseOrders: jest.fn(),
+    } as never);
+
+    render(await DashboardPage());
+
+    expect(
+      screen.getByText("Backend Supabase project mismatch"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("wrong_supabase_project")).toBeInTheDocument();
+    expect(screen.getByText("401")).toBeInTheDocument();
   });
 
   it("renders an organization access state instead of crashing on backend 403", async () => {

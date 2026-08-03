@@ -1,8 +1,22 @@
+import {
+  BackendAuthError,
+  isBackendAuthError,
+} from "@/components/auth/backend-auth-error";
 import { createServerApiClient } from "@/lib/api/server";
 
 export default async function InventoryPage() {
   const apiClient = await createServerApiClient();
-  const items = await apiClient.listInventoryItems({ limit: 50 });
+  let items;
+
+  try {
+    items = await apiClient.listInventoryItems({ limit: 50 });
+  } catch (error) {
+    if (isBackendAuthError(error)) {
+      return <BackendAuthError error={error} />;
+    }
+
+    throw error;
+  }
 
   return (
     <section className="space-y-4">

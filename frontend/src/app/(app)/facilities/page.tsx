@@ -1,3 +1,7 @@
+import {
+  BackendAuthError,
+  isBackendAuthError,
+} from "@/components/auth/backend-auth-error";
 import { createServerApiClient } from "@/lib/api/server";
 
 import { createFacilityAction } from "./actions";
@@ -6,7 +10,17 @@ import { initialFacilityFormState } from "./form-state";
 
 export default async function FacilitiesPage() {
   const apiClient = await createServerApiClient();
-  const facilities = await apiClient.listFacilities({ limit: 50 });
+  let facilities;
+
+  try {
+    facilities = await apiClient.listFacilities({ limit: 50 });
+  } catch (error) {
+    if (isBackendAuthError(error)) {
+      return <BackendAuthError error={error} />;
+    }
+
+    throw error;
+  }
 
   return (
     <section className="space-y-4">
@@ -17,7 +31,10 @@ export default async function FacilitiesPage() {
         </p>
       </header>
 
-      <FacilityForm action={createFacilityAction} initialState={initialFacilityFormState} />
+      <FacilityForm
+        action={createFacilityAction}
+        initialState={initialFacilityFormState}
+      />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full text-sm">

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
 import InventoryPage from "./page";
+import { ApiClientError } from "@/lib/api/client";
 import { createServerApiClient } from "@/lib/api/server";
 
 jest.mock("@/lib/api/server", () => ({
@@ -54,5 +55,24 @@ describe("InventoryPage", () => {
     expect(
       screen.getByText("No Lighthouse inventory levels found."),
     ).toBeInTheDocument();
+  });
+
+  it("renders backend auth diagnostics instead of crashing", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listInventoryItems: jest.fn().mockRejectedValue(
+        new ApiClientError({
+          code: "AUTH_TOKEN_PROJECT_MISMATCH",
+          message: "Access token was issued by a different Supabase project.",
+          status: 401,
+        }),
+      ),
+    } as never);
+
+    render(await InventoryPage());
+
+    expect(
+      screen.getByText("Backend Supabase project mismatch"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("wrong_supabase_project")).toBeInTheDocument();
   });
 });
