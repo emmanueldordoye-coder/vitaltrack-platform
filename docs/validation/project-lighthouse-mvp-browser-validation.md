@@ -36,14 +36,14 @@ The frontend and backend were validated against the same staging Supabase projec
 
 ## Screenshot Evidence
 
-Screenshot evidence is tracked in `docs/validation/screenshots/`. Expected files:
+Screenshot evidence was extracted from the 2026-08-03 browser validation screen recording and stored in `docs/validation/screenshots/`:
 
 - `docs/validation/screenshots/project-lighthouse-dashboard.png`
 - `docs/validation/screenshots/project-lighthouse-facilities.png`
 - `docs/validation/screenshots/project-lighthouse-inventory.png`
 - `docs/validation/screenshots/project-lighthouse-purchase-orders.png`
 
-Codex could not capture the authenticated browser screenshots directly from this workspace because the in-app browser was stopped by Vercel preview protection and the local Chrome connector was unavailable. The successful browser validation was completed manually in the staging preview listed above, so the screenshot evidence remains a manual attachment step for the same validated environment.
+The screenshots show the authenticated VitalTrack shell after login and verify the Dashboard, Facilities, Inventory, and Purchase Orders screens in the validated staging environment.
 
 ## Demo Readiness Cleanup
 
@@ -68,4 +68,4 @@ Generated local artifacts were intentionally excluded from the release documenta
 
 ## Validation Result
 
-Project Lighthouse MVP browser validation is complete and passed for the staging environment. The application is ready for customer demonstration from the validated staging preview, subject to attaching final screenshot evidence from the authenticated browser session.
+Project Lighthouse MVP browser validation is complete and passed for the staging environment. The application is ready for customer demonstration from the validated staging preview.
