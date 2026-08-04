@@ -17,10 +17,12 @@ const getInitials = (email: string) => {
 export function AppShell({
   children,
   userEmail,
+  workspaceLabel = "Project Lighthouse",
   signOutAction,
 }: {
   children: ReactNode;
   userEmail: string;
+  workspaceLabel?: string;
   signOutAction: string | (() => Promise<void>);
 }) {
   const initials = getInitials(userEmail);
@@ -78,7 +80,7 @@ export function AppShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <ShellHeader />
+          <ShellHeader workspaceLabel={workspaceLabel} />
           <main
             className="min-w-0 flex-1 overflow-auto px-4 py-5 sm:px-6"
             data-testid="app-main"

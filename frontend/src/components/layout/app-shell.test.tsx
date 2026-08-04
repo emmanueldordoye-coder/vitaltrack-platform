@@ -86,11 +86,25 @@ describe("Project Lighthouse shell", () => {
   it("renders the current route in the shell header", () => {
     mockedUsePathname.mockReturnValue("/inventory");
 
-    render(<ShellHeader />);
+    render(<ShellHeader workspaceLabel="Dentira Main Office" />);
 
     expect(screen.getByText("Operations")).toBeInTheDocument();
     expect(screen.getByText("Inventory")).toBeInTheDocument();
-    expect(screen.getByText("Project Lighthouse")).toBeInTheDocument();
+    expect(screen.getByText("Dentira Main Office")).toBeInTheDocument();
+  });
+
+  it("renders workspace context in the shell when supplied", () => {
+    render(
+      <AppShell
+        signOutAction="/sign-out"
+        userEmail="operator@example.com"
+        workspaceLabel="Dentira Main Office"
+      >
+        <div>Dashboard</div>
+      </AppShell>,
+    );
+
+    expect(screen.getByText("Dentira Main Office")).toBeInTheDocument();
   });
 
   it("keeps the shell responsive between mobile and desktop layouts", () => {

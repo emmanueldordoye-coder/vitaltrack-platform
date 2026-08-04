@@ -17,12 +17,30 @@ describe("DashboardPage", () => {
 
   it("renders dashboard counts when backend API calls succeed", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
-      listFacilities: jest.fn().mockResolvedValue([{ id: "facility-1" }]),
+      listFacilities: jest
+        .fn()
+        .mockResolvedValue([{ id: "facility-1", name: "Dentira Main Office" }]),
       listInventoryItems: jest
         .fn()
         .mockResolvedValue([
-          { product_id: "product-1" },
-          { product_id: "product-2" },
+          {
+            product_id: "product-1",
+            location_id: "location-1",
+            product_name: "Patterson Exam Gloves",
+            sku: "PAT-GLOVE-M",
+            current_quantity: 4,
+            reorder_point: 6,
+            is_low_stock: true,
+          },
+          {
+            product_id: "product-2",
+            location_id: "location-1",
+            product_name: "Patterson Prophy Paste",
+            sku: "PAT-PROPHY",
+            current_quantity: 18,
+            reorder_point: 8,
+            is_low_stock: false,
+          },
         ]),
       listPurchaseOrders: jest.fn().mockResolvedValue([]),
     } as never);
@@ -30,10 +48,59 @@ describe("DashboardPage", () => {
     render(await DashboardPage());
 
     expect(screen.getByText("Facilities")).toBeInTheDocument();
-    expect(screen.getByText("Inventory items")).toBeInTheDocument();
+    expect(screen.getByText("Inventory rows")).toBeInTheDocument();
+    expect(screen.getByText("Low-stock items")).toBeInTheDocument();
     expect(screen.getByText("Purchase orders")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("Dentira Main Office")).toHaveLength(3);
+    expect(screen.getAllByText("1")).toHaveLength(2);
+    expect(screen.getAllByText("2")).toHaveLength(1);
+  });
+
+  it("derives low-stock count from inventory rows", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listFacilities: jest
+        .fn()
+        .mockResolvedValue([{ id: "facility-1", name: "Dentira Main Office" }]),
+      listInventoryItems: jest.fn().mockResolvedValue([
+        {
+          product_id: "product-1",
+          location_id: "location-1",
+          product_name: "Patterson Bonding Agent",
+          sku: "PAT-BOND",
+          current_quantity: 2,
+          reorder_point: 4,
+          is_low_stock: true,
+        },
+        {
+          product_id: "product-2",
+          location_id: "location-1",
+          product_name: "Patterson Curing Light Sleeve",
+          sku: "PAT-SLEEVE",
+          current_quantity: 5,
+          reorder_point: 5,
+          is_low_stock: true,
+        },
+        {
+          product_id: "product-3",
+          location_id: "location-1",
+          product_name: "Patterson Bibs",
+          sku: "PAT-BIB",
+          current_quantity: 22,
+          reorder_point: 10,
+          is_low_stock: false,
+        },
+      ]),
+      listPurchaseOrders: jest.fn().mockResolvedValue([]),
+    } as never);
+
+    render(await DashboardPage());
+
+    expect(screen.getByText("2 products are at or below reorder point"))
+      .toBeInTheDocument();
+    expect(screen.getAllByText("Low stock")).toHaveLength(2);
+    expect(screen.queryByText(/monthly spend/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/savings/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/time saved/i)).not.toBeInTheDocument();
   });
 
   it("renders a session validation state instead of crashing on backend 401", async () => {

@@ -4,7 +4,11 @@ import { usePathname } from "next/navigation";
 
 import { getRouteLabel } from "@/components/layout/routes";
 
-export const ShellHeader = () => {
+export const ShellHeader = ({
+  workspaceLabel = "Project Lighthouse",
+}: {
+  workspaceLabel?: string;
+}) => {
   const pathname = usePathname();
   const label = getRouteLabel(pathname);
 
@@ -18,7 +22,7 @@ export const ShellHeader = () => {
         </div>
       </div>
       <div className="hidden text-xs font-medium text-lighthouse-primary sm:block">
-        Project Lighthouse
+        {workspaceLabel}
       </div>
     </header>
   );
