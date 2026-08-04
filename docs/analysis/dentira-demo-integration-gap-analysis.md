@@ -24,7 +24,7 @@ Confirmed staging validation evidence is documented in `docs/validation/project-
 
 | Design Surface | Figma Reference | Inspection Status |
 | --- | --- | --- |
-| Inventory Catalog | `https://www.figma.com/make/2EVPJxnjg3oowPTcR7AqIb/Design-Inventory-Catalog-Screen?t=bhKIdJBZ1KRUq4MN-1` | Figma Make context inspected with file key `2EVPJxnjg3oowPTcR7AqIb` and root node `0:1`. |
+| Figma Make source | `https://www.figma.com/make/2EVPJxnjg3oowPTcR7AqIb/Design-Inventory-Catalog-Screen?t=bhKIdJBZ1KRUq4MN-1&preview-route=%23%2F` | Figma Make context inspected with file key `2EVPJxnjg3oowPTcR7AqIb` and root node `0:1`; the `preview-route` decodes to `#/`, so the preview route is the root Dashboard. |
 | Published Dashboard / Shell | `https://yang-clad-06271710.figma.site` | Rendered in headless Chrome and inspected through the published Figma Make bundle. |
 | Dashboard design node | Not yet provided as a `/design/` URL with `node-id` | Pixel-perfect Figma frame metadata remains pending, but the published dashboard reference is inspectable. |
 
@@ -32,7 +32,7 @@ Confirmed staging validation evidence is documented in `docs/validation/project-
 
 The supplied Inventory Catalog reference is a Figma Make URL, not a regular Figma `/design/` frame URL. The Figma connector returned the Make application resource inventory, including page files and theme files, but did not expose readable source contents through the available resource reader. The screenshot endpoint also rejected the Make root with `INVALID_ARGUMENT`, which is consistent with the screenshot tool supporting `/design/` nodes rather than Make files.
 
-The published Figma site at `https://yang-clad-06271710.figma.site` was inspectable through a JavaScript-enabled browser and its generated component bundle. The visible published route is the Dashboard screen. The bundle also exposes the Inventory Catalog component structure and static sample data, so this report now distinguishes visible published Dashboard evidence from bundled Inventory Catalog implementation details.
+The published Figma site at `https://yang-clad-06271710.figma.site` was inspectable through a JavaScript-enabled browser and its generated component bundle. The visible published route is the Dashboard screen. The supplied Make URL also includes `preview-route=%23%2F`, which decodes to `#/`; this confirms the shared preview is also the root Dashboard route. The bundle exposes the Inventory Catalog component structure and static sample data, so this report distinguishes visible published Dashboard evidence from bundled Inventory Catalog implementation details.
 
 Because of that, this report separates:
 
