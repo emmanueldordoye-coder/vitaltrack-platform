@@ -6,6 +6,8 @@ Comprehensive documentation for VitalTrack Technologies platform.
 
 ```
 docs/
+├── analysis/
+│   └── dentira-demo-integration-gap-analysis.md
 ├── api/
 │   ├── overview.md
 │   ├── authentication.md
@@ -57,6 +59,7 @@ docs/
 - [Architecture Overview](architecture/overview.md)
 - [Testing Guide](development/testing.md)
 - [Coding Standards](development/coding-standards.md)
+- [Dentira Demo Integration Gap Analysis](analysis/dentira-demo-integration-gap-analysis.md)
 
 ### For Operations
 
