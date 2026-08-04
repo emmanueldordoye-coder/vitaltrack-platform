@@ -25,18 +25,22 @@ Confirmed staging validation evidence is documented in `docs/validation/project-
 | Design Surface | Figma Reference | Inspection Status |
 | --- | --- | --- |
 | Inventory Catalog | `https://www.figma.com/make/2EVPJxnjg3oowPTcR7AqIb/Design-Inventory-Catalog-Screen?t=bhKIdJBZ1KRUq4MN-1` | Figma Make context inspected with file key `2EVPJxnjg3oowPTcR7AqIb` and root node `0:1`. |
-| Dashboard | Not yet provided as a `/design/` URL with `node-id` | Exact dashboard frame mapping remains pending. |
+| Published Dashboard / Shell | `https://yang-clad-06271710.figma.site` | Rendered in headless Chrome and inspected through the published Figma Make bundle. |
+| Dashboard design node | Not yet provided as a `/design/` URL with `node-id` | Pixel-perfect Figma frame metadata remains pending, but the published dashboard reference is inspectable. |
 
 ## Audit Constraint
 
-The supplied Inventory Catalog reference is a Figma Make URL, not a regular Figma `/design/` frame URL. The Figma connector returned the Make application resource inventory, including page files and theme files, but did not expose readable source contents or a renderable screenshot through the available resource reader. The screenshot endpoint also rejected the Make root with `INVALID_ARGUMENT`, which is consistent with the screenshot tool supporting `/design/` nodes rather than Make files.
+The supplied Inventory Catalog reference is a Figma Make URL, not a regular Figma `/design/` frame URL. The Figma connector returned the Make application resource inventory, including page files and theme files, but did not expose readable source contents through the available resource reader. The screenshot endpoint also rejected the Make root with `INVALID_ARGUMENT`, which is consistent with the screenshot tool supporting `/design/` nodes rather than Make files.
+
+The published Figma site at `https://yang-clad-06271710.figma.site` was inspectable through a JavaScript-enabled browser and its generated component bundle. The visible published route is the Dashboard screen. The bundle also exposes the Inventory Catalog component structure and static sample data, so this report now distinguishes visible published Dashboard evidence from bundled Inventory Catalog implementation details.
 
 Because of that, this report separates:
 
 - Confirmed production code, API, and seed-data facts.
 - Confirmed Figma Make application structure from the connector response.
-- Figma-to-production gaps that can be mapped from the Make app's exposed page/component inventory.
-- Design-token and pixel-level details that still require a regular Figma `/design/` node URL or readable Make source contents.
+- Figma-to-production gaps that can be mapped from the Make app's exposed page/component inventory and published site bundle.
+- Design-token details confirmed from the published CSS bundle.
+- Pixel-perfect node geometry that still requires a regular Figma `/design/` node URL.
 
 No claims below invent unseen colors, spacing, chart values, or unsupported product functionality.
 
@@ -157,9 +161,33 @@ This confirms the design concept is broader than the currently deployed MVP. The
 | Receiving/inventory update | No production page | Database trigger/function exists | Missing UI/API integration; future workflow work. |
 | Static Dentira demonstration copy | Generic VitalTrack copy | Static frontend text | Missing Dentira-specific labels and honest demo context. |
 
+## Published Dashboard Figma-To-Production Map
+
+The published Figma site renders a desktop Dashboard in a 220px left sidebar plus a top header and scrollable main content area. The visual language uses Plus Jakarta Sans, a deep navy sidebar, light gray app background, white rounded cards, compact typography, thin slate borders, and small lucide-style icons.
+
+| Published Dashboard Element | Visible Figma Detail | Production Status | Data Dependency | Implementation Classification |
+| --- | --- | --- | --- | --- |
+| Sidebar brand area | White logo tile above `VitalTrack Technologies` branding | Existing shell has text brand only | Static logo/brand asset | Demo-critical visual gap; use existing app shell. |
+| Sidebar navigation | Dashboard, Inventory, AI Recommendations with `NEW`, Order Review with `STEP 2`, Orders badge `4`, Receiving, Analytics, Vendors, Reports, Team, Settings | Production nav has Dashboard, Facilities, Inventory, Purchase Orders | Static route list | Demo-critical: only show supported routes or disabled/static labels; do not imply AI/analytics/receiving are live. |
+| User card | `Eric Rawls`, `Regional Supply Manager`, initials `ER` | Production shell shows auth email only | Session email; no first/last/role UI field currently exposed | Demo-critical visual gap; static demo display is acceptable if documented, or expose workspace context later. |
+| Top breadcrumb | `Operations > Dashboard` | Production pages do not use breadcrumb | Static page context | Demo-critical visual gap. |
+| Notification button | Bell icon with red unread dot and dropdown copy | Not present | Static/bundled notifications only | Future enhancement; avoid showing active notification feature unless static/noninteractive. |
+| Greeting header | `Good morning, Eric`; `Eric Rawls · Regional Supply Manager · Dentira`; Refresh button | Production dashboard title is generic | Session/workspace plus static copy | Demo-critical; can be static for demo if not claimed as profile management. |
+| KPI grid | 3 columns x 2 rows of compact cards | Existing `StatCard` can be reused | Mixed live and unsupported values | Use live-backed cards first; static-only cards must be clearly demo content or omitted. |
+| Total Inventory Value card | `$47,820`, `132 SKUs · 4 locations`, `+$2,140 vs last month` | Not currently computed | Current inventory has 7 rows and unit costs; no 132 SKU/live trend data | Unsupported as shown; can compute visible inventory value only. |
+| Month-to-Date Spend card | `$14,240`, `July 2026 · 18 days remaining`, `-12% vs June` | Not supported | No spend history endpoint/seed | Static demo-only or future analytics; do not claim live. |
+| Estimated Monthly Savings card | `$1,340`, `vs. ad-hoc purchasing`, `+$240 vs last month` | Not supported | Prior average cost exists in product metadata, but no monthly baseline endpoint | Static demo-only; pilot-critical if savings remains in demo story. |
+| Products Running Low card | `7`, `3 critical · 4 below par`, `+2 since last week` | Partially supported | `GET /api/v1/inventory` includes `is_low_stock`; no critical/below-par/trend split | Demo-critical if shown; support honest low-stock count only. |
+| Pending Orders card | `4`, `Est. $6,740 · 3 vendors` | Not supported in Dentira seed | Purchase Orders API exists, but Dentira seed currently has no POs | Static demo-only or requires approved seed update. |
+| Time Saved card | `6.5 hrs`, `vs. manual ordering workflow` | Not supported | No workflow time tracking | Future enhancement/static marketing copy only. |
+| Active Alerts panel | Six alerts with Reorder buttons and `Review AI Recommendations` CTA | No production alert component | Some low-stock rows exist; expiration/vendor delay/AI recommendation data is not live | Demo-critical gap if dashboard must match; only low-stock alert copy can be honest today. |
+| Monthly Spend chart | Spline chart from Feb-Jul with `$14,240 this month` | Not present | No spend history endpoint/seed | Future analytics/static demo-only. |
+| Spend by Category chart | Bar chart: Restorative, PPE, Anesthesia, Surgical, Preventive, Sterile | Not present | Inventory categories exist, spend by category does not | Future analytics; avoid unless computed as inventory value by category and labeled accurately. |
+| Open Purchase Orders table | PO-4821 through PO-4818, vendor, items, total, status, ETA, Track action | Production PO page exists but Dentira seed is empty | Purchase Orders API supports rows, but current Dentira seed has none | Demo-critical decision: seed approved read-only POs or show an honest empty state. |
+
 ## Inventory Catalog Figma-To-Production Map
 
-This section maps the supplied Figma Make Inventory Catalog design to the validated production `/inventory` route. Pixel-level typography, colors, and spacing remain pending readable Make source contents or a normal Figma `/design/` node.
+This section maps the supplied Figma Make Inventory Catalog design to the validated production `/inventory` route. The component source was inferred from the published bundle; the published route itself currently opens on Dashboard.
 
 | Inventory Catalog Element | Production Status | Production Location | Data Dependency | Implementation Classification |
 | --- | --- | --- | --- | --- |
@@ -171,7 +199,8 @@ This section maps the supplied Figma Make Inventory Catalog design to the valida
 | Inventory table container | Exists | Inventory page table wrapper | `GET /api/v1/inventory` | Reuse and restyle. |
 | SKU column | Exists | Inventory table | `sku` from `products.sku` | Supported live data. |
 | Product/name column | Exists | Inventory table | `product_name` from `products.name` | Supported live data. |
-| Manufacturer part number column | Exists as `MPN` | Inventory table | `manufacturer_part_number` | Supported live data. |
+| Manufacturer part number column | Exists as `MPN` in production; Figma table prioritizes product/category/vendor | Inventory table | `manufacturer_part_number` | Supported live data, but not visible in the extracted Figma table header. |
+| Category column | Missing in production UI | Figma Inventory table | Product category exists in catalog seed | Demo-critical if Figma table parity is required; backend read path currently does not return category. |
 | Location column | Exists | Inventory table | `location_name` from `locations.name` | Supported live data. |
 | Quantity/current stock column | Exists as `Qty` | Inventory table | `current_quantity` | Supported live data. |
 | Par level column | Exists as `Par` | Inventory table | `par_level` | Supported live data. |
@@ -179,13 +208,19 @@ This section maps the supplied Figma Make Inventory Catalog design to the valida
 | Vendor/supplier column | Exists | Inventory table | `vendor_name`, resolved through Patterson vendor metadata | Supported live data. |
 | Unit cost column | Exists | Inventory table | `unit_cost` from product metadata | Supported live data. |
 | Stock status badge | Exists | Inventory table | `is_low_stock`, computed as `current_quantity <= reorder_point` | Supported computed value. |
-| Search/filter control | Missing in UI | Backend supports `search` query | `GET /api/v1/inventory?search=` across product name, SKU, MPN | Demo-critical gap; no backend rebuild needed. |
-| Category filter | Not currently wired in backend query | API schema accepts `category`, but Lighthouse read path currently ignores it | Category exists in Product Master Catalog seed, but current endpoint does not join/render it | Do not claim support until backend read path is updated. |
-| Inventory summary cards | Missing on inventory page | Could be added from existing inventory response | Total rows, low-stock count, estimated stock value from `unit_cost * current_quantity` | Demo-safe if presented as derived from visible inventory rows, not analytics. |
-| Suggested order CTA | Missing in production UI | Database RPC exists; no production API/UI workflow | Unsupported in live app today | Must not be enabled or implied in the Inventory Catalog demo unless a separate workflow slice is built. |
+| Search/filter control | Missing in UI | Figma search placeholder: `Search products, SKU, vendor...`; backend supports `search` query | `GET /api/v1/inventory?search=` across product name, SKU, MPN | Demo-critical gap; no backend rebuild needed for name/SKU/MPN search. Vendor search would need backend support or copy adjustment. |
+| Category filter chips | Missing in production UI | `All`, `PPE`, `Restorative`, `Preventive`, `Anesthesia`, `Impressions`, `Surgical`, `Imaging`, `Diagnostic`, `Sterilization` | Category seed exists, but current endpoint does not return/filter category | Do not claim support until backend read path is updated. |
+| Vendor filter dropdown | Missing in production UI | All Vendors plus dental suppliers including Patterson Dental | Current endpoint returns vendor name but does not support vendor filter | Demo-critical only if visual parity requires it; implement honestly or leave static disabled. |
+| Location filter dropdown | Missing in production UI | All Locations plus multiple demo offices | Dentira seed has one facility and four storage locations, not the Figma's four dental offices | Static/demo-only unless seed model is intentionally expanded. |
+| Inventory summary cards | Missing on inventory page | Total SKUs, Low Stock, Critical, Out of Stock, Expiring Soon | Total and low-stock can be derived; critical/out-of-stock/expiring are not supported by current status model | Demo-safe only for supported totals/low-stock; others require explicit seed/API support. |
+| Reorder alert strip | Missing | `X items need immediate reorder`, `Reorder All` | Suggested ordering UI not wired | Unsupported today; do not enable. |
+| Header actions | Missing | Sync, Export, Add Item | No export/add workflow in current scope | Demo-only/unsupported; omit or disable. |
+| Table columns | Partial | Product, Category, Vendor, Qty, Par, Reorder, Stock Level, Status, Days, action | Current API supports most inventory values except category and days remaining | Demo-critical styling gap; category/days require data or omission. |
+| Product images | Missing | Figma uses 64px product thumbnails from stock image URLs | No product images in Dentira seed/API | Future enhancement or static decorative-only. |
+| Suggested order CTA | Missing in production UI | Figma includes AI Recommendations/Order Review routes and reorder buttons | Database RPC exists; no production API/UI workflow | Must not be enabled or implied unless a separate workflow slice is built. |
 | Supplier integration / submit to Patterson | Not implemented | None | Vendor is mock Patterson data only | Unsupported; must remain static/mock language only. |
 | Charts | Not present in production inventory page | None | No chart endpoint | Unsupported unless chart is static decorative content or derived transparently from visible rows. |
-| Icons | Production currently uses text-only nav/table | None | Figma Make includes image assets and UI primitives, but exact glyphs were not readable | Required new visual assets/components only after design source or exported assets are accessible. |
+| Icons | Production currently uses text-only nav/table | None | Figma bundle uses lucide-style icons for sidebar, alerts, refresh, download, plus, search, sort, bell, charts | Demo-critical visual gap; use lucide icons where already available or add the existing icon package if present. |
 
 ## Design Tokens From Available Evidence
 
@@ -202,7 +237,22 @@ The current production app uses Tailwind with a small `brand` palette:
 
 The Figma Make bundle references `default_shadcn_theme.css`, `src/styles/theme.css`, `src/styles/globals.css`, `src/styles/fonts.css`, and shadcn-style UI primitives. Exact Figma token values cannot be confirmed from the current connector response because the files are listed but not readable through the available resource reader.
 
-Implementation should therefore map Figma tokens into the existing Tailwind theme only after the token source is readable or a `/design/` frame URL is supplied.
+The published CSS bundle confirms these additional design tokens:
+
+| Token | Figma Published Value |
+| --- | --- |
+| Font | `Plus Jakarta Sans`, with `JetBrains Mono` for small metadata/monospace labels |
+| App background | `#eef0f4` |
+| Text foreground | `#111827` |
+| Primary/nav navy | `#16305e` |
+| Accent green | `#0a9e6b` |
+| Destructive red | `#dc2626` |
+| Secondary surface | `#e4e8f0` |
+| Muted surface | `#e8ecf2` |
+| Border | `#00000014` |
+| Radius | `0.625rem` token, with published cards using `rounded-xl` |
+
+Implementation should map these into the existing Tailwind theme or component classes without changing backend behavior.
 
 ## Dentira Seed And Catalog Data Completeness
 
@@ -271,8 +321,8 @@ Implementation should therefore map Figma tokens into the existing Tailwind them
 | --- | --- | --- | --- |
 | Page access | Operational after membership resolution | None functionally | Demo-critical done |
 | Metrics | Facilities, inventory item count, PO count | Add Dentira-relevant low-stock and supplier/order context if shown in Figma | Demo-critical |
-| Visual design | Generic stat cards and sparse layout | Match Figma dashboard composition | Demo-critical |
-| Data honesty | Counts reflect live APIs | Avoid claiming unsupported suggested-order actions | Demo-critical |
+| Visual design | Generic stat cards and sparse layout | Match Figma dashboard composition: 6 KPI cards, alerts panel, charts, PO table, compact shell | Demo-critical |
+| Data honesty | Counts reflect live APIs | Avoid claiming unsupported AI recommendations, savings, spend trends, time-saved, or active PO data unless backed by seed/API | Demo-critical |
 
 ### Facilities
 
@@ -320,7 +370,7 @@ Implementation should therefore map Figma tokens into the existing Tailwind them
 4. Convert the Purchase Orders page from a blank table to an honest demo-safe empty state unless approved Dentira PO seed data is intentionally added.
 5. Hide, de-emphasize, or restyle legacy create forms that are not part of the approved Figma flow.
 6. Keep diagnostics available for failures but avoid making staging diagnostic panels part of the happy-path demo narrative.
-7. Complete exact Figma audit once the Figma URL/node is available.
+7. Use the published Figma Dashboard/Shell and Inventory bundle mapping as the demo visual reference; request the `/design/` node only for pixel-perfect implementation.
 
 ### B. Pilot-Critical
 
@@ -339,21 +389,22 @@ Implementation should therefore map Figma tokens into the existing Tailwind them
 
 ## Recommended Smallest Implementation Sequence
 
-1. Obtain a regular Figma `/design/` dashboard frame URL with `node-id` if exact dashboard spacing, colors, icon glyphs, and responsive behavior are required.
-2. Use the supplied Figma Make Inventory Catalog reference to align the `/inventory` shell/table direction without changing backend APIs.
-3. Build a small Dentira demo shell layer on top of the existing authenticated layout: logo/brand treatment, workspace label, user display, and nav styling. Reuse the current routes.
-4. Restyle Dashboard with existing data first: facilities count, inventory count, purchase-order count, and a derived low-stock count from the existing inventory response if the final dashboard design needs it.
-5. Restyle Inventory and add search using the existing backend `search` query. Do not introduce a new endpoint.
-6. Restyle Facilities and decide whether the current create form should be hidden for demo parity.
-7. Restyle Purchase Orders with an honest empty state or seed-approved read-only demo rows. Do not imply ordering automation is live unless the suggested-order UI is implemented.
+1. Align the authenticated shell with the published Figma site: 220px navy sidebar, compact top breadcrumb/header, Dentira user/workspace display, and supported nav only.
+2. Restyle Dashboard with existing data first: facilities count, inventory count, purchase-order count, and a derived low-stock count from the existing inventory response. Omit or label static-only spend/savings/time-saved charts until backed by data.
+3. Restyle Inventory and add search using the existing backend `search` query. Do not introduce a new endpoint.
+4. Add only honest inventory summary cards: total visible rows and low-stock count. Defer critical/out-of-stock/expiring unless the data model is extended.
+5. Restyle Facilities and decide whether the current create form should be hidden for demo parity.
+6. Restyle Purchase Orders with an honest empty state or seed-approved read-only demo rows. Do not imply ordering automation is live unless the suggested-order UI is implemented.
+7. Obtain a regular Figma `/design/` dashboard frame URL with `node-id` only if exact node geometry and responsive handoff are needed.
 8. Only after the above is stable, start a separate pilot workflow ticket for suggested orders, approval, PO creation, and receiving UI.
 
 ## Estimated Effort
 
 | Task | Estimate | Notes |
 | --- | ---: | --- |
-| Figma dashboard inspection and exact element inventory | 0.5 day | Requires dashboard `/design/` node URL. |
-| Figma Make Inventory Catalog mapping | Complete | Make URL inspected; source file contents and screenshot were not readable from current connector response. |
+| Published Figma dashboard inspection and exact element inventory | Complete | Published site rendered and bundle inspected. |
+| Pixel-perfect Figma node extraction | 0.5 day | Still requires dashboard `/design/` node URL. |
+| Figma Make Inventory Catalog mapping | Complete | Make URL and published bundle inspected. |
 | Dentira shell/profile visual alignment | 0.5-1 day | Mostly frontend styling and copy. |
 | Dashboard visual parity with existing metrics | 1 day | Add low-stock derivation only if needed; no backend rebuild. |
 | Inventory Figma styling and search control | 1 day | Existing API supports search. |
@@ -370,7 +421,7 @@ Implementation should therefore map Figma tokens into the existing Tailwind them
 - Use the existing authenticated layout, nav links, stat card pattern, and backend list APIs.
 - Add Dentira workspace/user context to the shell using existing authenticated data where possible.
 - Restyle Sign In and Dashboard to match the Figma design.
-- Use the supplied Figma Make Inventory Catalog reference as supporting direction for shell/table styling, but do not treat unsupported Make pages as live product scope.
+- Use the published Figma Dashboard/Shell URL and supplied Figma Make Inventory Catalog reference as visual direction, but do not treat unsupported Make pages as live product scope.
 - Use only existing metrics: facilities count, inventory count, purchase-order count, and optionally derived low-stock count from the existing inventory list.
 - Keep copy honest: no AI, forecasting, supplier submission, receiving, barcode scanning, analytics, or ordering automation claims.
 
@@ -383,4 +434,4 @@ Implementation should therefore map Figma tokens into the existing Tailwind them
 
 ## Required Follow-Up Input
 
-To complete exact dashboard pixel/component parity, provide the Dentira Dashboard Figma `/design/` URL with a `node-id`. The supplied Inventory Catalog Figma Make URL is now mapped above, but its source contents and screenshot were not readable through the current connector response.
+To complete exact dashboard pixel/component parity, provide the Dentira Dashboard Figma `/design/` URL with a `node-id`. The published Figma site and generated bundle are sufficient for implementation planning, but the original design node is still the cleanest source for exact responsive measurements.
