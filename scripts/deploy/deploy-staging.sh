@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+VERCEL_CLI_VERSION="58.5.1"
+
 normalize_secret() {
   local value="${1:-}"
 
@@ -91,8 +93,9 @@ if [[ -z "$supabase_anon_key" ]]; then
 fi
 
 echo "Verifying Vercel authentication..."
+echo "Using pinned Vercel CLI version: ${VERCEL_CLI_VERSION}"
 echo "Vercel token length after normalization: ${#VERCEL_TOKEN}"
-if ! vercel_identity="$(npx vercel@latest whoami --token "$VERCEL_TOKEN" 2>&1)"; then
+if ! vercel_identity="$(npx --yes "vercel@${VERCEL_CLI_VERSION}" whoami --token "$VERCEL_TOKEN" 2>&1)"; then
   echo "$vercel_identity" >&2
   echo "Vercel authentication failed after removing whitespace and surrounding quotes. Replace the GitHub staging environment secret VERCEL_TOKEN with the raw token value that succeeds with 'vercel whoami'." >&2
   exit 1
@@ -103,7 +106,7 @@ echo "Deploying frontend (Vercel) to staging..."
 pushd frontend >/dev/null
 echo "Installing frontend dependencies for Vercel prebuilt deployment..."
 npm install --workspaces=false --include=dev --no-audit --no-fund --package-lock=false
-npx vercel pull --yes --environment=preview --token "$VERCEL_TOKEN"
+npx --yes "vercel@${VERCEL_CLI_VERSION}" pull --yes --environment=preview --token "$VERCEL_TOKEN"
 export NEXT_PUBLIC_GIT_SHA="$deploy_git_sha"
 export NEXT_PUBLIC_SUPABASE_URL="$supabase_url"
 export NEXT_PUBLIC_SUPABASE_ANON_KEY="$supabase_anon_key"
@@ -112,7 +115,7 @@ if [[ -n "${API_BASE_URL:-}" ]]; then
   export API_BASE_URL
 fi
 echo "Building frontend locally for Vercel staging..."
-npx vercel build --yes --target=preview --token "$VERCEL_TOKEN"
+npx --yes "vercel@${VERCEL_CLI_VERSION}" build --yes --target=preview --token "$VERCEL_TOKEN"
 vercel_deploy_args=(
   --prebuilt
   --yes
@@ -145,7 +148,7 @@ shutil.copy2(frontend_vercel / "project.json", root_vercel / "project.json")
 shutil.copytree(frontend_vercel / "output", root_vercel / "output")
 PY
 vercel_output="$(
-  npx vercel deploy "${vercel_deploy_args[@]}"
+  npx --yes "vercel@${VERCEL_CLI_VERSION}" deploy "${vercel_deploy_args[@]}"
 )"
 echo "$vercel_output"
 vercel_deployment_url="$(
