@@ -19,7 +19,7 @@ const getSearchQuery = (search?: string | string[]) => {
 
 export default async function InventoryPage({
   searchParams,
-}: InventoryPageProps = {}) {
+}: InventoryPageProps) {
   const apiClient = await createServerApiClient();
   const searchQuery = getSearchQuery(searchParams?.search);
   let items: InventoryCatalogItem[];

@@ -49,7 +49,7 @@ describe("InventoryPage", () => {
       ),
     } as never);
 
-    render(await InventoryPage());
+    render(await InventoryPage({}));
 
     expect(screen.getByText("Inventory Catalog")).toBeInTheDocument();
     expect(screen.getByText("Total rows")).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("InventoryPage", () => {
       listInventoryItems: jest.fn().mockResolvedValue([]),
     } as never);
 
-    render(await InventoryPage());
+    render(await InventoryPage({}));
 
     expect(screen.getByText("No inventory rows found")).toBeInTheDocument();
     expect(
@@ -131,7 +131,7 @@ describe("InventoryPage", () => {
       ),
     } as never);
 
-    render(await InventoryPage());
+    render(await InventoryPage({}));
 
     expect(
       screen.getByText("Backend Supabase project mismatch"),
