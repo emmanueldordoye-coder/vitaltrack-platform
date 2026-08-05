@@ -6,7 +6,8 @@ import type {
   CreateInventoryItemInput,
   CreatePurchaseOrderInput,
   Facility,
-  InventoryItem,
+  InventoryCatalogItem,
+  LegacyInventoryItem,
   ListFacilitiesQuery,
   ListInventoryQuery,
   ListPurchaseOrdersQuery,
@@ -39,6 +40,18 @@ export class ApiClientError extends Error {
     this.details = details;
   }
 }
+
+const parseApiResponse = async <T>(response: Response) => {
+  try {
+    return (await response.json()) as ApiSuccessResponse<T> | ApiErrorResponse;
+  } catch {
+    throw new ApiClientError({
+      message: "Backend returned a non-JSON response.",
+      code: "API_RESPONSE_INVALID",
+      status: response.status,
+    });
+  }
+};
 
 const toSearchParams = (query?: Record<string, Primitive | undefined>) => {
   if (!query) {
@@ -73,17 +86,27 @@ export class VitalTrackApiClient {
     query?: Record<string, Primitive | undefined>;
     body?: unknown;
   }) {
-    const response = await fetch(`${this.baseUrl}${path}${toSearchParams(query)}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store",
-    });
+    const url = `${this.baseUrl}${path}${toSearchParams(query)}`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: "no-store",
+      });
+    } catch {
+      throw new ApiClientError({
+        message: "Unable to reach the staging backend API.",
+        code: "API_NETWORK_OR_CORS_ERROR",
+        status: 0,
+      });
+    }
 
-    const payload = (await response.json()) as ApiSuccessResponse<T> | ApiErrorResponse;
+    const payload = await parseApiResponse<T>(response);
     if (!response.ok || !payload.success) {
       const errorPayload = payload as ApiErrorResponse;
       throw new ApiClientError({
@@ -118,7 +141,7 @@ export class VitalTrackApiClient {
   }
 
   listInventoryItems(query: ListInventoryQuery = {}) {
-    return this.request<InventoryItem[]>({
+    return this.request<InventoryCatalogItem[]>({
       path: "/inventory",
       query: {
         category: query.category,
@@ -130,7 +153,7 @@ export class VitalTrackApiClient {
   }
 
   createInventoryItem(input: CreateInventoryItemInput) {
-    return this.request<InventoryItem>({
+    return this.request<LegacyInventoryItem>({
       path: "/inventory",
       method: "POST",
       body: input,

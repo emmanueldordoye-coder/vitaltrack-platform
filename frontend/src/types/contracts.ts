@@ -51,7 +51,23 @@ export interface Facility {
   updated_at: string | null;
 }
 
-export interface InventoryItem {
+export interface InventoryCatalogItem {
+  product_id: string;
+  sku: string;
+  product_name: string;
+  manufacturer_part_number: string | null;
+  current_quantity: number;
+  par_level: number;
+  reorder_point: number;
+  location_id: string;
+  location_name: string | null;
+  vendor_id: string | null;
+  vendor_name: string | null;
+  unit_cost: number | null;
+  is_low_stock: boolean;
+}
+
+export interface LegacyInventoryItem {
   id: string;
   organization_id: string;
   sku: string;
@@ -172,7 +188,8 @@ export interface CreatePurchaseOrderInput {
   poDate: string;
   expectedDeliveryDate?: string;
   actualDeliveryDate?: string;
-  status?: "draft" | "submitted" | "confirmed" | "shipped" | "received" | "cancelled";
+  status?:
+    "draft" | "submitted" | "confirmed" | "shipped" | "received" | "cancelled";
   totalAmount?: number;
   currency?: string;
   notes?: string;

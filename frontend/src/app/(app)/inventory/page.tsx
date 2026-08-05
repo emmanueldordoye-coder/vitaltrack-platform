@@ -1,45 +1,41 @@
+import {
+  BackendAuthError,
+  isBackendAuthError,
+} from "@/components/auth/backend-auth-error";
+import { InventoryCatalog } from "@/components/inventory/inventory-catalog";
 import { createServerApiClient } from "@/lib/api/server";
+import type { InventoryCatalogItem } from "@/types/contracts";
 
-import { createInventoryItemAction, initialInventoryFormState } from "./actions";
-import { InventoryForm } from "./inventory-form";
+interface InventoryPageProps {
+  searchParams?: {
+    search?: string | string[];
+  };
+}
 
-export default async function InventoryPage() {
+const getSearchQuery = (search?: string | string[]) => {
+  const value = Array.isArray(search) ? search[0] : search;
+  return value?.trim() ?? "";
+};
+
+export default async function InventoryPage({
+  searchParams,
+}: InventoryPageProps) {
   const apiClient = await createServerApiClient();
-  const items = await apiClient.listInventoryItems({ limit: 50 });
+  const searchQuery = getSearchQuery(searchParams?.search);
+  let items: InventoryCatalogItem[];
 
-  return (
-    <section className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold text-slate-900">Inventory</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Track stock SKUs, categories, and base procurement metadata.
-        </p>
-      </header>
+  try {
+    items = await apiClient.listInventoryItems({
+      limit: 50,
+      search: searchQuery || undefined,
+    });
+  } catch (error) {
+    if (isBackendAuthError(error)) {
+      return <BackendAuthError error={error} />;
+    }
 
-      <InventoryForm action={createInventoryItemAction} initialState={initialInventoryFormState} />
+    throw error;
+  }
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
-            <tr>
-              <th className="px-4 py-3 font-medium">SKU</th>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium">UOM</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-t border-slate-100">
-                <td className="px-4 py-3">{item.sku}</td>
-                <td className="px-4 py-3">{item.name}</td>
-                <td className="px-4 py-3">{item.category ?? "—"}</td>
-                <td className="px-4 py-3">{item.uom ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
+  return <InventoryCatalog items={items} searchQuery={searchQuery} />;
 }

@@ -3,6 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "./env.js";
 import type { Database } from "../types/database.js";
 
+export type RequestScopedSupabaseClient = ReturnType<
+  typeof createRequestScopedSupabaseClient
+>;
+
 export const createRequestScopedSupabaseClient = (accessToken?: string) => {
   const headers: Record<string, string> = {};
 

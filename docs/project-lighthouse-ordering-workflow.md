@@ -1,8 +1,20 @@
 # Project Lighthouse Ordering Workflow
 
 **Status**: Active  
-**Last Updated**: 2026-07-15
+**Last Updated**: 2026-08-03
 **Scope**: Dentira pilot database workflow for low-stock ordering
+
+## MVP Browser Validation
+
+Project Lighthouse MVP browser validation passed in staging on 2026-08-03.
+
+- Frontend: `https://vitaltrack-project-lighthouse-age6vkobz-vital-track-project.vercel.app`
+- Backend commit: `7dfa81543ef1e5eca1f3bf1808a2d8ae775f34a2`
+- Supabase project ref: `ccwywzsjrtcgjudqgbwu`
+- Verified screens: Dashboard, Facilities, Inventory, Purchase Orders
+- Verified workflow: login, organization membership resolution, protected dashboard load, facilities access, inventory access, and purchase-order access
+
+Release validation details are recorded in `docs/validation/project-lighthouse-mvp-browser-validation.md`.
 
 ## Workflow
 

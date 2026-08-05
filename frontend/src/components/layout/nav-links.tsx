@@ -3,32 +3,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { supportedNavigation } from "@/components/layout/routes";
 import { cn } from "@/lib/utils";
-
-const links = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/facilities", label: "Facilities" },
-  { href: "/inventory", label: "Inventory" },
-  { href: "/purchase-orders", label: "Purchase Orders" },
-];
 
 export const NavLinks = () => {
   const pathname = usePathname();
 
   return (
     <nav aria-label="Primary">
-      <ul className="space-y-1">
-        {links.map((link) => {
+      <ul className="flex gap-1 lg:block lg:space-y-1" data-testid="primary-navigation-list">
+        {supportedNavigation.map((link) => {
           const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
           return (
-            <li key={link.href}>
+            <li className="min-w-max lg:min-w-0" key={link.href}>
               <Link
                 href={link.href}
                 className={cn(
-                  "block rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900",
-                  isActive && "bg-brand-50 text-brand-700",
+                  "flex items-center rounded-md px-3 py-2 text-xs font-semibold transition-colors",
+                  "text-[#8BA7CC] hover:bg-white/10 hover:text-white",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+                  isActive && "bg-white/15 text-white shadow-sm",
                 )}
+                aria-current={isActive ? "page" : undefined}
               >
                 {link.label}
               </Link>

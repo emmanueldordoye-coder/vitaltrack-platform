@@ -6,10 +6,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signInFormSchema } from "@/lib/validation/forms";
 
-export interface AuthFormState {
-  status: "idle" | "success" | "error";
-  message: string | null;
-}
+import type { AuthFormState } from "./form-state";
 
 const signIn = async (
   supabase: SupabaseClient,
@@ -19,11 +16,6 @@ const signIn = async (
     email: credentials.email,
     password: credentials.password,
   });
-
-export const initialAuthFormState: AuthFormState = {
-  status: "idle",
-  message: null,
-};
 
 export const signInAction = async (
   _prevState: AuthFormState,

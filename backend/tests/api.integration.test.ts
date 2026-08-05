@@ -9,6 +9,8 @@ import type { Database, TableInsert } from "../src/types/database.js";
 process.env.NODE_ENV = "test";
 process.env.SUPABASE_URL ??= "https://example.supabase.co";
 process.env.SUPABASE_ANON_KEY ??= "test-anon-key";
+process.env.GIT_SHA = "workflow-sha";
+process.env.RENDER_GIT_COMMIT = "render-sha";
 
 const { createApp } = await import("../src/app.js");
 
@@ -92,11 +94,8 @@ class FakeQueryBuilder implements PromiseLike<QueryResult> {
 
   public then<TResult1 = QueryResult, TResult2 = never>(
     onfulfilled?:
-      | ((value: QueryResult) => TResult1 | PromiseLike<TResult1>)
-      | null,
-    onrejected?:
-      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-      | null,
+      ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return Promise.resolve(this.handler(structuredClone(this.state))).then(
       onfulfilled ?? undefined,
@@ -112,24 +111,28 @@ const createFakeSupabase = (
     const handler = handlers[table];
 
     if (!handler) {
-      throw new Error(`No fake Supabase handler registered for table "${table}".`);
+      throw new Error(
+        `No fake Supabase handler registered for table "${table}".`,
+      );
     }
 
     return new FakeQueryBuilder(table, handler);
   },
 });
 
-const createRequestContextMiddleware = ({
-  accessToken = "token-123",
-  organizationId = "org-123",
-  userId = "user-123",
-  supabase = createFakeSupabase({}),
-}: {
+const createRequestContextMiddleware = (options: {
   accessToken?: string;
   organizationId?: string;
   userId?: string;
   supabase?: ReturnType<typeof createFakeSupabase>;
 }): RequestHandler => {
+  const accessToken =
+    "accessToken" in options ? options.accessToken : "token-123";
+  const organizationId =
+    "organizationId" in options ? options.organizationId : "org-123";
+  const userId = "userId" in options ? options.userId : "user-123";
+  const supabase = options.supabase ?? createFakeSupabase({});
+
   return (req, _res, next) => {
     req.context = {
       requestId: "req-test",
@@ -147,6 +150,17 @@ const createRequestContextMiddleware = ({
     next();
   };
 };
+
+test("GET /api/v1/health reports the Render commit when available", async () => {
+  const app = createApp();
+
+  const response = await supertest(app).get("/api/v1/health");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.gitSha, "render-sha");
+  assert.equal(response.body.data.gitShaSource, "RENDER_GIT_COMMIT");
+  assert.equal(response.body.data.supabaseProjectRef, "example");
+});
 
 test("POST /api/v1/facilities uses the authenticated organization context", async () => {
   let insertedPayload: TableInsert<"facilities"> | undefined;
@@ -174,14 +188,12 @@ test("POST /api/v1/facilities uses the authenticated organization context", asyn
     }),
   });
 
-  const response = await supertest(app)
-    .post("/api/v1/facilities")
-    .send({
-      organizationId: "org-foreign",
-      name: "Central Hospital",
-      facilityType: "hospital",
-      city: "Lagos",
-    });
+  const response = await supertest(app).post("/api/v1/facilities").send({
+    organizationId: "org-foreign",
+    name: "Central Hospital",
+    facilityType: "hospital",
+    city: "Lagos",
+  });
 
   assert.equal(response.status, 201);
   assert.equal(insertedPayload?.organization_id, "org-current");
@@ -203,7 +215,7 @@ test("GET /api/v1/facilities rejects unauthorized access", async () => {
   const response = await supertest(app).get("/api/v1/facilities");
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "UNAUTHORIZED");
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
 });
 
 test("GET /api/v1/facilities rejects authenticated users without an organization context", async () => {
@@ -219,7 +231,7 @@ test("GET /api/v1/facilities rejects authenticated users without an organization
   const response = await supertest(app).get("/api/v1/facilities");
 
   assert.equal(response.status, 403);
-  assert.equal(response.body.error.code, "FORBIDDEN");
+  assert.equal(response.body.error.code, "AUTH_ORGANIZATION_REQUIRED");
 });
 
 test("GET /api/v1/facilities/:id returns 404 when RLS hides another tenant's row", async () => {
@@ -231,7 +243,9 @@ test("GET /api/v1/facilities/:id returns 404 when RLS hides another tenant's row
     }),
   });
 
-  const response = await supertest(app).get("/api/v1/facilities/f91020dc-986f-4027-b3ea-b9e4391129fd");
+  const response = await supertest(app).get(
+    "/api/v1/facilities/f91020dc-986f-4027-b3ea-b9e4391129fd",
+  );
 
   assert.equal(response.status, 404);
   assert.equal(response.body.error.code, "NOT_FOUND");
@@ -263,15 +277,13 @@ test("POST /api/v1/inventory uses the authenticated organization context", async
     }),
   });
 
-  const response = await supertest(app)
-    .post("/api/v1/inventory")
-    .send({
-      organizationId: "org-foreign",
-      sku: "SKU-123",
-      name: "Syringe Pack",
-      category: "consumables",
-      trackExpiration: true,
-    });
+  const response = await supertest(app).post("/api/v1/inventory").send({
+    organizationId: "org-foreign",
+    sku: "SKU-123",
+    name: "Syringe Pack",
+    category: "consumables",
+    trackExpiration: true,
+  });
 
   assert.equal(response.status, 201);
   assert.equal(insertedPayload?.organization_id, "org-current");
@@ -293,7 +305,7 @@ test("GET /api/v1/inventory rejects unauthorized access", async () => {
   const response = await supertest(app).get("/api/v1/inventory");
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "UNAUTHORIZED");
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
 });
 
 test("GET /api/v1/inventory/:id returns 404 when RLS hides another tenant's row", async () => {
@@ -305,7 +317,9 @@ test("GET /api/v1/inventory/:id returns 404 when RLS hides another tenant's row"
     }),
   });
 
-  const response = await supertest(app).get("/api/v1/inventory/458a690b-dc0d-4374-a177-f3f467f34994");
+  const response = await supertest(app).get(
+    "/api/v1/inventory/458a690b-dc0d-4374-a177-f3f467f34994",
+  );
 
   assert.equal(response.status, 404);
   assert.equal(response.body.error.code, "NOT_FOUND");
@@ -338,15 +352,13 @@ test("POST /api/v1/purchase-orders derives audit fields from the authenticated u
     }),
   });
 
-  const response = await supertest(app)
-    .post("/api/v1/purchase-orders")
-    .send({
-      facilityId: "b3b9875f-2449-40d6-b825-0866712bce90",
-      poNumber: "PO-1001",
-      poDate: "2026-06-25T12:00:00Z",
-      createdBy: "user-foreign",
-      updatedBy: "user-foreign",
-    });
+  const response = await supertest(app).post("/api/v1/purchase-orders").send({
+    facilityId: "b3b9875f-2449-40d6-b825-0866712bce90",
+    poNumber: "PO-1001",
+    poDate: "2026-06-25T12:00:00Z",
+    createdBy: "user-foreign",
+    updatedBy: "user-foreign",
+  });
 
   assert.equal(response.status, 201);
   assert.equal(insertedPayload?.created_by, "user-current");
@@ -369,7 +381,7 @@ test("GET /api/v1/purchase-orders rejects unauthorized access", async () => {
   const response = await supertest(app).get("/api/v1/purchase-orders");
 
   assert.equal(response.status, 401);
-  assert.equal(response.body.error.code, "UNAUTHORIZED");
+  assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
 });
 
 test("GET /api/v1/purchase-orders/:id returns 404 when RLS hides another tenant's row", async () => {
@@ -382,7 +394,9 @@ test("GET /api/v1/purchase-orders/:id returns 404 when RLS hides another tenant'
     }),
   });
 
-  const response = await supertest(app).get("/api/v1/purchase-orders/d7afe1d1-0e0e-452e-af64-5f985e9a6fa1");
+  const response = await supertest(app).get(
+    "/api/v1/purchase-orders/d7afe1d1-0e0e-452e-af64-5f985e9a6fa1",
+  );
 
   assert.equal(response.status, 404);
   assert.equal(response.body.error.code, "NOT_FOUND");

@@ -5,15 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerApiClient } from "@/lib/api/server";
 import { createInventoryItemFormSchema } from "@/lib/validation/forms";
 
-export interface InventoryFormState {
-  status: "idle" | "success" | "error";
-  message: string | null;
-}
-
-export const initialInventoryFormState: InventoryFormState = {
-  status: "idle",
-  message: null,
-};
+import type { InventoryFormState } from "./form-state";
 
 export const createInventoryItemAction = async (
   _prevState: InventoryFormState,

@@ -6,6 +6,8 @@ Comprehensive documentation for VitalTrack Technologies platform.
 
 ```
 docs/
+├── analysis/
+│   └── dentira-demo-integration-gap-analysis.md
 ├── api/
 │   ├── overview.md
 │   ├── authentication.md
@@ -32,6 +34,8 @@ docs/
 │   ├── disaster-recovery.md
 │   ├── scaling.md
 │   └── security.md
+├── validation/
+│   └── project-lighthouse-mvp-browser-validation.md
 ├── user-guide/
 │   ├── getting-started.md
 │   ├── inventory-management.md
@@ -55,6 +59,7 @@ docs/
 - [Architecture Overview](architecture/overview.md)
 - [Testing Guide](development/testing.md)
 - [Coding Standards](development/coding-standards.md)
+- [Dentira Demo Integration Gap Analysis](analysis/dentira-demo-integration-gap-analysis.md)
 
 ### For Operations
 
@@ -62,6 +67,7 @@ docs/
 - [Monitoring & Alerting](operations/monitoring.md)
 - [Disaster Recovery](operations/disaster-recovery.md)
 - [Scaling Guide](operations/scaling.md)
+- [Project Lighthouse MVP Browser Validation](validation/project-lighthouse-mvp-browser-validation.md)
 
 ### For Users
 
