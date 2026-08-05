@@ -25,3 +25,14 @@ Files:
 - `dentira-presentation/purchase-orders-mobile.png`
 
 These screenshots were captured from the approved PR #14 staging deployment at commit `071c602f045c4379ef3c9f45f6b69d662e4906ca`.
+
+## Dentira Facilities Presentation
+
+Facilities presentation screenshots are stored in `dentira-facilities-presentation/`.
+
+Files:
+
+- `dentira-facilities-presentation/facilities-desktop.png`
+- `dentira-facilities-presentation/facilities-mobile.png`
+
+These screenshots were captured from a local preview of the Facilities component using the Dentira Main Office fixture after the page presentation update.
