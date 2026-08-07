@@ -55,7 +55,7 @@ export const DashboardOverview = ({
         <StatCard
           label="Inventory rows"
           value={inventoryItems.length}
-          description="Product quantities visible to this workspace"
+          description="Tracked supply rows for this workspace"
         />
         <StatCard
           label="Low-stock items"
@@ -73,7 +73,7 @@ export const DashboardOverview = ({
           description={
             purchaseOrders.length === 0
               ? "No purchase orders are currently listed"
-              : "Purchase order records visible to this workspace"
+              : "Orders currently listed for this workspace"
           }
         />
       </div>
@@ -161,9 +161,9 @@ export const DashboardOverview = ({
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Inventory source</dt>
+              <dt className="text-slate-500">Inventory view</dt>
               <dd className="mt-1 font-semibold text-slate-900">
-                Project Lighthouse catalog
+                Dentira supply catalog
               </dd>
             </div>
             <div>

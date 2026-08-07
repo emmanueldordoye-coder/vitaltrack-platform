@@ -23,7 +23,7 @@ describe("PurchaseOrdersPage", () => {
     render(await PurchaseOrdersPage());
 
     expect(screen.getByText("Purchase Orders")).toBeInTheDocument();
-    expect(screen.getByText("Purchasing workspace")).toBeInTheDocument();
+    expect(screen.getByText("Dentira purchasing")).toBeInTheDocument();
     expect(screen.getByText("Total orders")).toBeInTheDocument();
     expect(
       within(screen.getByTestId("purchase-orders-summary-total-orders")).getByText(
@@ -42,7 +42,7 @@ describe("PurchaseOrdersPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("No purchase orders listed")).toBeInTheDocument();
     expect(
-      screen.getByText(/Dentira does not currently have purchase-order rows/i),
+      screen.getByText(/No purchase orders are currently listed for Dentira/i),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("purchase-order-row")).not.toBeInTheDocument();
     expect(screen.queryByText(/Create Purchase Order/i)).not.toBeInTheDocument();
