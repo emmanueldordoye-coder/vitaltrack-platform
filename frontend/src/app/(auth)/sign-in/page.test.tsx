@@ -39,7 +39,9 @@ describe("SignInPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toHaveClass(
+      "bg-[#087f57]",
+    );
     expect(screen.queryByText(/supabase/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/project lighthouse/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/smoketest/i)).not.toBeInTheDocument();

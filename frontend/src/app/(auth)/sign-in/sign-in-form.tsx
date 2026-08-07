@@ -18,7 +18,7 @@ const SubmitButton = () => {
     <button
       type="submit"
       disabled={pending}
-      className="h-11 w-full rounded-md bg-lighthouse-accent px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#087f57] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lighthouse-accent disabled:cursor-not-allowed disabled:opacity-70"
+      className="h-11 w-full rounded-md bg-[#087f57] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#066c4b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f57] disabled:cursor-not-allowed disabled:opacity-70"
     >
       {pending ? "Signing in..." : "Sign in"}
     </button>
