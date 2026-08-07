@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { getRouteLabel } from "@/components/layout/routes";
 
 export const ShellHeader = ({
-  workspaceLabel = "Project Lighthouse",
+  workspaceLabel = "Dentira workspace",
 }: {
   workspaceLabel?: string;
 }) => {

@@ -104,7 +104,7 @@ describe("PurchaseOrdersPage", () => {
     render(await PurchaseOrdersPage());
 
     expect(
-      screen.getByText("Backend Supabase project mismatch"),
+      screen.getByText("Workspace connection needs attention"),
     ).toBeInTheDocument();
     expect(screen.getByText("wrong_supabase_project")).toBeInTheDocument();
     expect(screen.getByText("401")).toBeInTheDocument();

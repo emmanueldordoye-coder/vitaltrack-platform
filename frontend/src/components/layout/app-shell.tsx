@@ -17,7 +17,7 @@ const getInitials = (email: string) => {
 export function AppShell({
   children,
   userEmail,
-  workspaceLabel = "Project Lighthouse",
+  workspaceLabel = "Dentira workspace",
   signOutAction,
 }: {
   children: ReactNode;

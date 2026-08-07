@@ -118,9 +118,9 @@ describe("DashboardPage", () => {
 
     render(await DashboardPage());
 
-    expect(screen.getByText("Session validation required")).toBeInTheDocument();
+    expect(screen.getByText("Session needs attention")).toBeInTheDocument();
     expect(
-      screen.getByText(/could not validate this session/i),
+      screen.getByText(/secure session could not be confirmed/i),
     ).toBeInTheDocument();
     expect(screen.getByText("invalid_or_expired_jwt")).toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe("DashboardPage", () => {
     render(await DashboardPage());
 
     expect(
-      screen.getByText("Backend Supabase project mismatch"),
+      screen.getByText("Workspace connection needs attention"),
     ).toBeInTheDocument();
     expect(screen.getByText("wrong_supabase_project")).toBeInTheDocument();
     expect(screen.getByText("401")).toBeInTheDocument();
@@ -164,10 +164,10 @@ describe("DashboardPage", () => {
     render(await DashboardPage());
 
     expect(
-      screen.getByText("Organization access required"),
+      screen.getByText("Workspace access required"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/not assigned to an active organization/i),
+      screen.getByText(/not assigned to an active Dentira workspace/i),
     ).toBeInTheDocument();
   });
 
@@ -188,10 +188,10 @@ describe("DashboardPage", () => {
     render(await DashboardPage());
 
     expect(
-      screen.getByText("Workspace validation required"),
+      screen.getByText("Workspace access needs attention"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/could not load the organization workspace/i),
+      screen.getByText(/could not load the Dentira workspace/i),
     ).toBeInTheDocument();
   });
 });
