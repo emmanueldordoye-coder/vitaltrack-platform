@@ -49,6 +49,53 @@ fi
 deploy_git_sha="${EXPECTED_GIT_SHA:-${GIT_SHA:-$(git rev-parse HEAD)}}"
 echo "Deploying git commit: ${deploy_git_sha}"
 
+resolve_supabase_anon_key() {
+  local configured_key
+  configured_key="$(normalize_secret "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY:-}}")"
+
+  if [[ -n "$configured_key" ]]; then
+    printf '%s' "$configured_key"
+    return 0
+  fi
+
+  local api_keys_json
+  if ! api_keys_json="$(
+    curl --fail --silent --show-error \
+      --connect-timeout 10 \
+      --max-time 30 \
+      --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+      --header "Accept: application/json" \
+      "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/api-keys?reveal=true"
+  )"; then
+    echo "Unable to retrieve staging Supabase API keys from the Supabase Management API." >&2
+    return 1
+  fi
+
+  SUPABASE_API_KEYS_JSON="$api_keys_json" python3 <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["SUPABASE_API_KEYS_JSON"])
+keys = payload if isinstance(payload, list) else payload.get("apiKeys") or payload.get("keys") or []
+
+for item in keys:
+    name = str(item.get("name") or item.get("type") or item.get("role") or "").lower()
+    if name in {"anon", "publishable"} or name.endswith("_anon"):
+        key = (
+            item.get("api_key")
+            or item.get("apiKey")
+            or item.get("apikey")
+            or item.get("key")
+            or ""
+        )
+        if key:
+            print(key)
+            raise SystemExit(0)
+
+raise SystemExit(1)
+PY
+}
+
 prepare_supabase_migrations() {
   npx supabase@latest init --force
   rm -rf supabase/migrations
@@ -66,27 +113,10 @@ prepare_supabase_migrations() {
 
 supabase_url="https://${SUPABASE_PROJECT_REF}.supabase.co"
 echo "Resolving Supabase anon key for the staging frontend build..."
-supabase_api_keys_json="$(
-  npx supabase@latest projects api-keys \
-    --project-ref "$SUPABASE_PROJECT_REF" \
-    --reveal \
-    --output json
-)"
-supabase_anon_key="$(
-  SUPABASE_API_KEYS_JSON="$supabase_api_keys_json" python3 <<'PY'
-import json
-import os
-
-data = json.loads(os.environ["SUPABASE_API_KEYS_JSON"])
-keys = data if isinstance(data, list) else data.get("apiKeys", [])
-
-for item in keys:
-    name = str(item.get("name") or item.get("type") or item.get("role") or "").lower()
-    if name in {"anon", "publishable"} or name.endswith("_anon"):
-        print(item.get("api_key") or item.get("apiKey") or item.get("key") or "")
-        break
-PY
-)"
+if ! supabase_anon_key="$(resolve_supabase_anon_key)"; then
+  echo "Unable to resolve the staging Supabase anon key." >&2
+  exit 1
+fi
 if [[ -z "$supabase_anon_key" ]]; then
   echo "Unable to resolve the staging Supabase anon key." >&2
   exit 1
