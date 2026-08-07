@@ -18,7 +18,7 @@ const SubmitButton = () => {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+      className="h-11 w-full rounded-md bg-[#087f57] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#066c4b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087f57] disabled:cursor-not-allowed disabled:opacity-70"
     >
       {pending ? "Signing in..." : "Sign in"}
     </button>
@@ -29,9 +29,14 @@ export const SignInForm = ({ action, initialState }: SignInFormProps) => {
   const [state, formAction] = useFormState(action, initialState);
 
   return (
-    <form action={formAction} className="space-y-4" noValidate>
-      <div className="space-y-1">
-        <label htmlFor="email" className="text-sm font-medium text-slate-700">
+    <form
+      action={formAction}
+      className="space-y-4"
+      data-testid="sign-in-form"
+      noValidate
+    >
+      <div className="space-y-1.5">
+        <label htmlFor="email" className="text-sm font-semibold text-slate-700">
           Email
         </label>
         <input
@@ -40,11 +45,11 @@ export const SignInForm = ({ action, initialState }: SignInFormProps) => {
           type="email"
           autoComplete="email"
           required
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-500 transition focus:ring-2"
+          className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-lighthouse-accent focus:bg-white focus:ring-2 focus:ring-lighthouse-accent/20"
         />
       </div>
-      <div className="space-y-1">
-        <label htmlFor="password" className="text-sm font-medium text-slate-700">
+      <div className="space-y-1.5">
+        <label htmlFor="password" className="text-sm font-semibold text-slate-700">
           Password
         </label>
         <input
@@ -53,11 +58,14 @@ export const SignInForm = ({ action, initialState }: SignInFormProps) => {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-500 transition focus:ring-2"
+          className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-lighthouse-accent focus:bg-white focus:ring-2 focus:ring-lighthouse-accent/20"
         />
       </div>
       <FormMessage status={state.status} message={state.message} />
       <SubmitButton />
+      <p className="text-center text-xs leading-5 text-slate-500">
+        Secure access for authorized Dentira operations users.
+      </p>
     </form>
   );
 };
