@@ -97,7 +97,7 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
         <SummaryCard
           label="Active sites"
           value={activeFacilities.length}
-          description="Facilities currently available for operations"
+          description="Facilities listed for this workspace"
         />
         <SummaryCard
           label="Primary site"

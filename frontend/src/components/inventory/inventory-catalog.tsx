@@ -101,7 +101,7 @@ export const InventoryCatalog = ({
         <SummaryCard
           label="Total rows"
           value={items.length}
-          description="Tracked supply rows in this workspace"
+          description="Inventory rows shown"
           tone="success"
         />
         <SummaryCard
