@@ -7,7 +7,7 @@ import { getServerSessionUser } from "@/lib/auth/session";
 
 import { signOutAction } from "./actions";
 
-const fallbackWorkspaceLabel = "Project Lighthouse";
+const fallbackWorkspaceLabel = "Dentira workspace";
 
 const getWorkspaceLabel = async (accessToken: string) => {
   try {

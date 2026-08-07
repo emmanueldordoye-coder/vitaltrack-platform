@@ -143,7 +143,7 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
                     {facility.name}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    {facility.id}
+                    Assigned Dentira location
                   </p>
                 </div>
 

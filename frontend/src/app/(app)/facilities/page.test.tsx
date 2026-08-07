@@ -96,7 +96,7 @@ describe("FacilitiesPage", () => {
     render(await FacilitiesPage());
 
     expect(
-      screen.getByText("Backend Supabase project mismatch"),
+      screen.getByText("Workspace connection needs attention"),
     ).toBeInTheDocument();
     expect(screen.getByText("wrong_supabase_project")).toBeInTheDocument();
   });
