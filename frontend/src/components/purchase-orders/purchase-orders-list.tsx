@@ -84,14 +84,14 @@ export const PurchaseOrdersList = ({
     <section className="space-y-5">
       <header className="rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-          Purchasing workspace
+          Dentira purchasing
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
           Purchase Orders
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Review purchase order records already available to the Dentira
-          workspace using the existing backend purchase-order data.
+          Review purchase order records currently listed for the Dentira
+          workspace.
         </p>
       </header>
 
@@ -102,7 +102,7 @@ export const PurchaseOrdersList = ({
           description={
             purchaseOrders.length === 0
               ? "No purchase orders are currently listed"
-              : "Purchase order records visible to this workspace"
+              : "Orders currently listed for this workspace"
           }
           tone={purchaseOrders.length > 0 ? "success" : "default"}
         />
@@ -129,7 +129,8 @@ export const PurchaseOrdersList = ({
             Dentira purchase orders
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Status and totals come from existing backend purchase-order records.
+            Status and totals reflect the purchase orders currently available in
+            this workspace.
           </p>
         </div>
 
@@ -142,9 +143,9 @@ export const PurchaseOrdersList = ({
               No purchase orders listed
             </p>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-              Dentira does not currently have purchase-order rows in the staging
-              seed. When purchase orders exist, this table will show the PO
-              number, status, total, and order date from the existing API.
+              No purchase orders are currently listed for Dentira. When orders
+              are available, this table will show the PO number, status, total,
+              and order date.
             </p>
           </div>
         ) : (

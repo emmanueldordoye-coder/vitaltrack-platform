@@ -78,8 +78,8 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
           Facilities
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Review care-site details already assigned to the authenticated Dentira
-          workspace using the existing facilities API.
+          Review the care-site details assigned to the Dentira workspace,
+          including location, timezone, and active status.
         </p>
       </header>
 
@@ -89,20 +89,20 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
           value={facilities.length}
           description={
             facilities.length === 0
-              ? "No facilities returned for this workspace"
-              : "Facilities visible to this tenant"
+              ? "No facilities listed for this workspace"
+              : "Facilities assigned to this workspace"
           }
           tone={facilities.length > 0 ? "success" : "default"}
         />
         <SummaryCard
           label="Active sites"
           value={activeFacilities.length}
-          description="Facilities not marked inactive"
+          description="Facilities listed for this workspace"
         />
         <SummaryCard
           label="Primary site"
           value={primaryFacility?.name ?? "Not set"}
-          description="Dentira demo workspace context"
+          description="Main Dentira operating location"
         />
       </div>
 
@@ -125,9 +125,9 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
               No facilities listed
             </p>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-              No facilities were returned for this authenticated workspace. When
-              facilities exist, this page will show their name, type, location,
-              timezone, and active status from the existing API.
+              No facilities are currently listed for this workspace. Once a
+              facility is assigned, its name, type, location, timezone, and
+              status will appear here.
             </p>
           </div>
         ) : (
@@ -193,8 +193,8 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
       </div>
 
       <p className="text-sm leading-6 text-slate-500">
-        Facility creation remains available through existing backend capability,
-        but it is not part of the approved Dentira demo workflow.
+        This view focuses on the Dentira facility details currently assigned to
+        the workspace.
       </p>
     </section>
   );

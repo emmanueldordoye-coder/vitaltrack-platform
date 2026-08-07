@@ -37,7 +37,7 @@ describe("InventoryPage", () => {
     jest.resetAllMocks();
   });
 
-  it("renders Lighthouse inventory rows with summary counts", async () => {
+  it("renders Dentira inventory rows with summary counts", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listInventoryItems: jest.fn().mockResolvedValue(
         Array.from({ length: 7 }, (_, index) =>
@@ -83,7 +83,7 @@ describe("InventoryPage", () => {
     expect(screen.queryByText(/Barcode/i)).not.toBeInTheDocument();
   });
 
-  it("renders an empty state when no Lighthouse inventory exists", async () => {
+  it("renders an empty state when no inventory rows exist", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listInventoryItems: jest.fn().mockResolvedValue([]),
     } as never);
@@ -92,7 +92,9 @@ describe("InventoryPage", () => {
 
     expect(screen.getByText("No inventory rows found")).toBeInTheDocument();
     expect(
-      screen.getByText("No Lighthouse inventory levels found."),
+      screen.getByText(
+        "No inventory rows are currently listed for this workspace.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -116,7 +118,7 @@ describe("InventoryPage", () => {
     });
     expect(screen.getByDisplayValue("gloves")).toBeInTheDocument();
     expect(
-      screen.getByText('No Product Catalog rows match "gloves".'),
+      screen.getByText('No inventory rows match "gloves".'),
     ).toBeInTheDocument();
   });
 

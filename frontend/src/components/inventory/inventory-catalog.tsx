@@ -60,7 +60,7 @@ export const InventoryCatalog = ({
       <header className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-            Product master catalog
+            Dentira inventory
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
             Inventory Catalog
@@ -101,7 +101,7 @@ export const InventoryCatalog = ({
         <SummaryCard
           label="Total rows"
           value={items.length}
-          description="Visible Product Catalog inventory rows"
+          description="Inventory rows shown"
           tone="success"
         />
         <SummaryCard
@@ -138,8 +138,8 @@ export const InventoryCatalog = ({
             </p>
             <p className="mt-2 text-sm text-slate-500">
               {searchQuery
-                ? `No Product Catalog rows match "${searchQuery}".`
-                : "No Lighthouse inventory levels found."}
+                ? `No inventory rows match "${searchQuery}".`
+                : "No inventory rows are currently listed for this workspace."}
             </p>
           </div>
         ) : (
