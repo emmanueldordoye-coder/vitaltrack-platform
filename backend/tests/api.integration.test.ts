@@ -332,12 +332,21 @@ test("GET /api/v1/inventory/:id returns 404 when RLS hides another tenant's row"
 
 test("POST /api/v1/purchase-orders derives audit fields from the authenticated user", async () => {
   let insertedPayload: TableInsert<"purchase_orders"> | undefined;
+  let observedFacilityFilters: QueryState["filters"] = [];
 
   const app = createApp({
     requestContextMiddleware: createRequestContextMiddleware({
       organizationId: "org-current",
       userId: "user-current",
       supabase: createFakeSupabase({
+        facilities: (state) => {
+          observedFacilityFilters = state.filters;
+
+          return {
+            data: { id: "b3b9875f-2449-40d6-b825-0866712bce90" },
+            error: null,
+          };
+        },
         purchase_orders: (state) => {
           if (state.operation === "insert") {
             insertedPayload = state.payload as TableInsert<"purchase_orders">;
@@ -366,9 +375,91 @@ test("POST /api/v1/purchase-orders derives audit fields from the authenticated u
   });
 
   assert.equal(response.status, 201);
+  assert.deepEqual(
+    observedFacilityFilters.filter((filter) => filter.type === "eq"),
+    [
+      {
+        type: "eq",
+        column: "id",
+        value: "b3b9875f-2449-40d6-b825-0866712bce90",
+      },
+      { type: "eq", column: "organization_id", value: "org-current" },
+    ],
+  );
   assert.equal(insertedPayload?.created_by, "user-current");
   assert.equal(insertedPayload?.updated_by, "user-current");
   assert.equal(response.body.data.created_by, "user-current");
+});
+
+test("POST /api/v1/purchase-orders rejects facilities outside the authenticated organization", async () => {
+  let insertAttempted = false;
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-current",
+      userId: "user-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({ data: null, error: null }),
+        purchase_orders: () => {
+          insertAttempted = true;
+          return { data: null, error: null };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app).post("/api/v1/purchase-orders").send({
+    facilityId: "b3b9875f-2449-40d6-b825-0866712bce90",
+    poNumber: "PO-1001",
+    poDate: "2026-06-25T12:00:00Z",
+  });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.error.code, "NOT_FOUND");
+  assert.equal(insertAttempted, false);
+});
+
+test("POST /api/v1/purchase-orders rejects nonexistent facilities before insert", async () => {
+  let observedFacilityFilters: QueryState["filters"] = [];
+  let insertAttempted = false;
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-current",
+      userId: "user-current",
+      supabase: createFakeSupabase({
+        facilities: (state) => {
+          observedFacilityFilters = state.filters;
+          return { data: null, error: null };
+        },
+        purchase_orders: () => {
+          insertAttempted = true;
+          return { data: null, error: null };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app).post("/api/v1/purchase-orders").send({
+    facilityId: "00000000-0000-0000-0000-000000000404",
+    poNumber: "PO-1002",
+    poDate: "2026-06-25T12:00:00Z",
+  });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.error.code, "NOT_FOUND");
+  assert.deepEqual(
+    observedFacilityFilters.filter((filter) => filter.type === "eq"),
+    [
+      {
+        type: "eq",
+        column: "id",
+        value: "00000000-0000-0000-0000-000000000404",
+      },
+      { type: "eq", column: "organization_id", value: "org-current" },
+    ],
+  );
+  assert.equal(insertAttempted, false);
 });
 
 test("GET /api/v1/purchase-orders rejects unauthorized access", async () => {
@@ -396,6 +487,10 @@ test("GET /api/v1/purchase-orders maps Dentira PO source-backed fields", async (
     requestContextMiddleware: createRequestContextMiddleware({
       organizationId: "org-dentira",
       supabase: createFakeSupabase({
+        facilities: () => ({
+          data: [{ id: "facility-dentira" }],
+          error: null,
+        }),
         purchase_orders: (state) => {
           observedFilters = state.filters;
 
@@ -492,9 +587,9 @@ test("GET /api/v1/purchase-orders maps Dentira PO source-backed fields", async (
   const response = await supertest(app).get("/api/v1/purchase-orders");
 
   assert.equal(response.status, 200);
-  assert.deepEqual(
-    observedFilters.filter((filter) => filter.type === "eq"),
-    [{ type: "eq", column: "organization_id", value: "org-dentira" }],
+  assert.equal(
+    observedFilters.find((filter) => filter.type === "or")?.value,
+    "organization_id.eq.org-dentira,and(organization_id.is.null,facility_id.in.(facility-dentira))",
   );
   assert.equal(response.body.data[0].po_number, "PTU317717");
   assert.equal(response.body.data[0].order_number, "6209555669");
@@ -509,10 +604,126 @@ test("GET /api/v1/purchase-orders maps Dentira PO source-backed fields", async (
   assert.equal(response.body.data[0].items[0].brand_or_manufacturer, "Braval");
 });
 
+test("GET /api/v1/purchase-orders includes same-organization and same-facility legacy rows", async () => {
+  let observedFilters: QueryState["filters"] = [];
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({
+          data: [{ id: "facility-current" }],
+          error: null,
+        }),
+        purchase_orders: (state) => {
+          observedFilters = state.filters;
+
+          return {
+            data: [
+              {
+                id: "po-current",
+                organization_id: "org-current",
+                facility_id: "facility-current",
+                po_number: "PO-CURRENT",
+                po_date: "2026-06-25T12:00:00Z",
+                status: "draft",
+                total_amount: null,
+                currency: "USD",
+                metadata: null,
+                deleted_at: null,
+                purchase_order_items: [],
+              },
+              {
+                id: "po-legacy",
+                organization_id: null,
+                facility_id: "facility-current",
+                po_number: "PO-LEGACY",
+                po_date: "2026-06-25T12:00:00Z",
+                status: "draft",
+                total_amount: null,
+                currency: "USD",
+                metadata: null,
+                deleted_at: null,
+                purchase_order_items: [],
+              },
+            ],
+            error: null,
+          };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app).get("/api/v1/purchase-orders");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    response.body.data.map((order: { po_number: string }) => order.po_number),
+    ["PO-CURRENT", "PO-LEGACY"],
+  );
+  assert.equal(
+    observedFilters.find((filter) => filter.type === "or")?.value,
+    "organization_id.eq.org-current,and(organization_id.is.null,facility_id.in.(facility-current))",
+  );
+});
+
+test("GET /api/v1/purchase-orders does not include legacy rows from other-organization facilities", async () => {
+  let observedFilters: QueryState["filters"] = [];
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({
+          data: [{ id: "facility-current" }],
+          error: null,
+        }),
+        purchase_orders: (state) => {
+          observedFilters = state.filters;
+          const tenantFilter = String(
+            state.filters.find((filter) => filter.type === "or")?.value ?? "",
+          );
+
+          return {
+            data: tenantFilter.includes("facility-foreign")
+              ? [
+                  {
+                    id: "po-foreign",
+                    organization_id: null,
+                    facility_id: "facility-foreign",
+                    po_number: "PO-FOREIGN",
+                    po_date: "2026-06-25T12:00:00Z",
+                    status: "draft",
+                    total_amount: null,
+                    currency: "USD",
+                    metadata: null,
+                    deleted_at: null,
+                    purchase_order_items: [],
+                  },
+                ]
+              : [],
+            error: null,
+          };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app).get("/api/v1/purchase-orders");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.data, []);
+  assert.equal(
+    observedFilters.find((filter) => filter.type === "or")?.value,
+    "organization_id.eq.org-current,and(organization_id.is.null,facility_id.in.(facility-current))",
+  );
+});
+
 test("GET /api/v1/purchase-orders/:id returns 404 when RLS hides another tenant's row", async () => {
   const app = createApp({
     requestContextMiddleware: createRequestContextMiddleware({
       supabase: createFakeSupabase({
+        facilities: () => ({ data: [], error: null }),
         purchase_orders: () => ({ data: null, error: null }),
         purchase_order_items: () => ({ data: [], error: null }),
       }),

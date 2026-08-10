@@ -389,6 +389,12 @@ SET
   metadata = EXCLUDED.metadata,
   updated_at = CURRENT_TIMESTAMP;
 
+WITH patterson_vendor AS (
+  SELECT id
+  FROM vendors
+  WHERE organization_id = 'd0000000-0000-0000-0000-000000000001'
+    AND vendor_code = 'PATTERSON_DENTAL_SUPPLY_INC'
+)
 INSERT INTO purchase_orders (
   id,
   facility_id,
@@ -409,7 +415,7 @@ INSERT INTO purchase_orders (
   metadata,
   deleted_at
 )
-VALUES (
+SELECT
   'd4200000-0000-0000-0000-000000000001',
   'd1000000-0000-0000-0000-000000000001',
   'd4100000-0000-0000-0000-000000000001',
@@ -422,13 +428,13 @@ VALUES (
   'USD',
   'Imported from Dentira order-detail evidence. Shipping, tax, subtotal, receiving, delivery, and approval status were not available in the source.',
   'd0000000-0000-0000-0000-000000000001',
-  'd4110000-0000-0000-0000-000000000001',
+  patterson_vendor.id,
   0,
   NULL,
   FALSE,
   '{"source":"dentira_po_ptu317717","supplier":"PATTERSON DENTAL SUPPLY INC","dentira_order_number":"6209555669","shipping_label":"995 - Pembroke Pines","stated_total_items":42,"calculated_ordered_units":63,"source_total":1384.47,"status_source":"not_available","receiving_status_source":"not_available"}'::jsonb,
   NULL
-)
+FROM patterson_vendor
 ON CONFLICT (po_number) DO UPDATE
 SET
   facility_id = EXCLUDED.facility_id,

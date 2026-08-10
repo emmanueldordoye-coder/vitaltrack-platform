@@ -22,6 +22,56 @@ type PurchaseOrdersQuery = z.infer<typeof listPurchaseOrdersQuerySchema>;
 type CreatePurchaseOrderInput = z.infer<typeof createPurchaseOrderSchema>;
 type PurchaseOrderRow = TableRow<"purchase_orders">;
 
+const listOwnedFacilityIds = async (
+  reqSupabase: SupabaseClient<Database>,
+  organizationId: string,
+) => {
+  const { data, error } = await reqSupabase
+    .from("facilities")
+    .select("id")
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    throwSupabaseError("Unable to load facilities for purchase orders.", error);
+  }
+
+  return (data ?? []).map((facility) => facility.id);
+};
+
+const buildLegacyPurchaseOrderTenantFilter = async (
+  reqSupabase: SupabaseClient<Database>,
+  organizationId: string,
+) => {
+  const ownedFacilityIds = await listOwnedFacilityIds(reqSupabase, organizationId);
+
+  if (ownedFacilityIds.length === 0) {
+    return null;
+  }
+
+  return `organization_id.eq.${organizationId},and(organization_id.is.null,facility_id.in.(${ownedFacilityIds.join(",")}))`;
+};
+
+const assertFacilityBelongsToOrganization = async (
+  reqSupabase: SupabaseClient<Database>,
+  facilityId: string,
+  organizationId: string,
+) => {
+  const { data, error } = await reqSupabase
+    .from("facilities")
+    .select("id")
+    .eq("id", facilityId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    throwSupabaseError("Unable to validate the purchase order facility.", error);
+  }
+
+  if (!data) {
+    throw createNotFoundError("Facility");
+  }
+};
+
 const attachItems = async (
   reqSupabase: SupabaseClient<Database>,
   purchaseOrder: PurchaseOrderRow,
@@ -97,10 +147,17 @@ purchaseOrdersRouter.get(
           )
         `,
       )
-      .eq("organization_id", req.context.organizationId!)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(limit);
+
+    const legacyTenantFilter = await buildLegacyPurchaseOrderTenantFilter(
+      req.context.supabase,
+      req.context.organizationId!,
+    );
+    query = legacyTenantFilter
+      ? query.or(legacyTenantFilter)
+      : query.eq("organization_id", req.context.organizationId!);
 
     if (facilityId) {
       query = query.eq("facility_id", facilityId);
@@ -136,7 +193,7 @@ purchaseOrdersRouter.get(
       typeof idParamSchema
     >;
 
-    const { data, error } = await req.context.supabase
+    let query = req.context.supabase
       .from("purchase_orders")
       .select(
         `
@@ -154,9 +211,17 @@ purchaseOrdersRouter.get(
         `,
       )
       .eq("id", id)
-      .eq("organization_id", req.context.organizationId!)
-      .is("deleted_at", null)
-      .maybeSingle();
+      .is("deleted_at", null);
+
+    const legacyTenantFilter = await buildLegacyPurchaseOrderTenantFilter(
+      req.context.supabase,
+      req.context.organizationId!,
+    );
+    query = legacyTenantFilter
+      ? query.or(legacyTenantFilter)
+      : query.eq("organization_id", req.context.organizationId!);
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       throwSupabaseError("Unable to load the purchase order.", error);
@@ -175,6 +240,12 @@ purchaseOrdersRouter.post(
   validate({ body: createPurchaseOrderSchema }),
   handleRoute(async (req, res) => {
     const body = req.context.validated?.body as CreatePurchaseOrderInput;
+
+    await assertFacilityBelongsToOrganization(
+      req.context.supabase,
+      body.facilityId,
+      req.context.organizationId!,
+    );
 
     const purchaseOrderPayload: TableInsert<"purchase_orders"> = {
       facility_id: body.facilityId,
