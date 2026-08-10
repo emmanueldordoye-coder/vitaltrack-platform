@@ -216,6 +216,8 @@ if [[ -n "$SUPABASE_DB_DIRECT_URL" ]]; then
   echo "Applying database changes (Supabase) to staging via direct database URL..."
   prepare_supabase_migrations
   npx supabase@latest db push --db-url "$SUPABASE_DB_DIRECT_URL"
+  npx supabase@latest db query --db-url "$SUPABASE_DB_DIRECT_URL" --file database/seeds/004_project_lighthouse_dentira_demo.sql
+  npx supabase@latest db query --db-url "$SUPABASE_DB_DIRECT_URL" --file database/seeds/005_dentira_po_ptu317717.sql
 else
   echo "Skipping staging Supabase migrations because SUPABASE_DB_DIRECT_URL is not configured."
 fi

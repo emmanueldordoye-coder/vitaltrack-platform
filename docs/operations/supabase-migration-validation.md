@@ -11,6 +11,7 @@ Use a staging or dedicated throwaway Supabase project. A fresh project is prefer
 3. `database/migrations/003_project_lighthouse_ordering_workflow.sql`
 4. `database/migrations/004_project_lighthouse_security_hardening.sql`
 5. `database/seeds/004_project_lighthouse_dentira_demo.sql`
+6. `database/seeds/005_dentira_po_ptu317717.sql`
 
 The workflow adapts the existing `database/migrations` layout into a temporary `supabase/migrations` directory during the GitHub Actions run. It does not move or rename repository SQL files.
 
@@ -78,7 +79,7 @@ The workflow performs these checks:
 6. Links to the staging Supabase project.
 7. Runs `supabase db push --dry-run`.
 8. Applies all migrations to staging.
-9. Runs the Dentira seed file twice to confirm idempotency.
+9. Runs the Dentira seed files twice to confirm idempotency.
 10. Confirms these tables exist:
    - `products`
    - `categories`
@@ -96,6 +97,7 @@ The workflow performs these checks:
 12. Confirms foreign keys and expected indexes exist.
 13. Confirms Dentira seed counts and low-stock detection.
 14. Runs `database/validation/005_project_lighthouse_security_validation.sql` to prove cross-tenant access is rejected, same-tenant manager workflow still succeeds, receiving events are append-only, and `received_by` cannot be spoofed.
+15. Runs `database/validation/006_dentira_po_ptu317717_validation.sql` to prove the source-backed PO has 42 line items, 63 ordered units, a `USD 1,384.47` total, and zero PO-created inventory rows.
 
 Production is not touched by this workflow. The workflow requires the protected `staging` GitHub environment, staging-specific secrets, and a manual `VALIDATE_STAGING` confirmation before it links to any Supabase project.
 
@@ -114,8 +116,10 @@ A successful run should show:
 - A successful `supabase db push --dry-run`.
 - A successful `supabase db push`.
 - Two successful executions of `database/seeds/004_project_lighthouse_dentira_demo.sql`.
+- Two successful executions of `database/seeds/005_dentira_po_ptu317717.sql`.
 - No raised PostgreSQL exceptions from schema, RLS, foreign key, index, seed, or suggested-order checks.
 - A successful execution of `005_project_lighthouse_security_validation.sql`.
+- A successful execution of `006_dentira_po_ptu317717_validation.sql`.
 - A GitHub Actions summary headed `Project Lighthouse Supabase Validation`.
 
 ## Confirm Migrations Succeeded
@@ -127,7 +131,9 @@ After a successful run, confirm in the Supabase dashboard:
 3. Confirm the Project Lighthouse tables are present.
 4. Confirm `inventory_levels` contains seven Dentira demo rows.
 5. Confirm `lighthouse_low_stock_products` returns low-stock Dentira products.
-6. Confirm the Actions log shows `005_project_lighthouse_security_validation.sql` completed. That validation exercises suggested-order generation, approval, receiving, append-only receiving protections, and `received_by` attribution inside a rollback transaction, so it should not leave validation orders behind.
+6. Confirm purchase order `PTU317717` contains 42 line items and totals `USD 1,384.47`.
+7. Confirm the Actions log shows `005_project_lighthouse_security_validation.sql` completed. That validation exercises suggested-order generation, approval, receiving, append-only receiving protections, and `received_by` attribution inside a rollback transaction, so it should not leave validation orders behind.
+8. Confirm the Actions log shows `006_dentira_po_ptu317717_validation.sql` completed.
 
 ## Common Errors
 

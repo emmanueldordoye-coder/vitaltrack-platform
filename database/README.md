@@ -12,7 +12,11 @@ database/
 │   ├── 003_project_lighthouse_ordering_workflow.sql
 │   └── 004_project_lighthouse_security_hardening.sql
 ├── seeds/                   # Development & test data
-│   └── 002_seed_data.sql    # Sample orgs, facilities, inventory, stock
+│   ├── 002_seed_data.sql    # Sample orgs, facilities, inventory, stock
+│   ├── 004_project_lighthouse_dentira_demo.sql
+│   └── 005_dentira_po_ptu317717.sql
+├── sources/                 # Structured source artifacts for audited seeds
+│   └── dentira_po_ptu317717.json
 ├── queries/                 # Complex analytical queries
 │   └── common_queries.sql   # Inventory, PO, audit, operational metrics
 └── README.md
@@ -236,6 +240,9 @@ psql $DATABASE_URL -f database/seeds/003_product_master_catalog_template.sql
 # Load Project Lighthouse Dentira pilot data
 psql $DATABASE_URL -f database/seeds/004_project_lighthouse_dentira_demo.sql
 
+# Load verified Dentira purchasing evidence
+psql $DATABASE_URL -f database/seeds/005_dentira_po_ptu317717.sql
+
 # Verify data loaded
 psql $DATABASE_URL -c "SELECT COUNT(*) as org_count FROM organizations;"
 psql $DATABASE_URL -c "SELECT COUNT(*) as item_count FROM inventory_items;"
@@ -249,6 +256,27 @@ Seeds are designed to be:
 - **Realistic** - Data mirrors production scenarios
 - **Complete** - Includes cross-table relationships
 - **Testable** - Easy to verify with sample queries
+
+### Dentira PO PTU317717 Seed
+
+`005_dentira_po_ptu317717.sql` loads the first real Dentira purchasing-data
+artifact from the structured source file
+`database/sources/dentira_po_ptu317717.json`.
+
+The seed is idempotent and scoped to the Dentira demo organization. It creates
+or updates:
+
+- Patterson Dental Supply Inc supplier/vendor records for the source order
+- Manufacturer/brand rows visible in the supplied order details
+- 42 Product Master Catalog rows backed by PO line evidence
+- Purchase order `PTU317717`
+- 42 purchase order line items totaling 63 ordered units and `USD 1,384.47`
+
+The seed intentionally does **not** create `inventory_levels`. The source proves
+purchasing and catalog facts only; it does not prove current quantity, par
+level, reorder point, storage location, stock status, receiving status, shipment
+status, approval status, delivery status, payment status, savings, or usage
+velocity.
 
 ## Project Lighthouse Ordering Workflow
 

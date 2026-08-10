@@ -337,16 +337,24 @@ export interface Database {
       purchase_orders: {
         Row: {
           id: string;
+          organization_id: string | null;
           facility_id: string;
           supplier_id: string | null;
+          vendor_id: string | null;
+          suggested_order_id: string | null;
           po_number: string;
           po_date: string;
           expected_delivery_date: string | null;
           actual_delivery_date: string | null;
           status: string | null;
           total_amount: number | null;
+          estimated_savings: number;
           currency: string | null;
+          confirmation_number: string | null;
+          mock_supplier_submission: boolean;
           notes: string | null;
+          metadata: Json | null;
+          deleted_at: string | null;
           created_by: string | null;
           updated_by: string | null;
           created_at: string | null;
@@ -354,16 +362,24 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          organization_id?: string | null;
           facility_id: string;
           supplier_id?: string | null;
+          vendor_id?: string | null;
+          suggested_order_id?: string | null;
           po_number: string;
           po_date: string;
           expected_delivery_date?: string | null;
           actual_delivery_date?: string | null;
           status?: string | null;
           total_amount?: number | null;
+          estimated_savings?: number;
           currency?: string | null;
+          confirmation_number?: string | null;
+          mock_supplier_submission?: boolean;
           notes?: string | null;
+          metadata?: Json | null;
+          deleted_at?: string | null;
           created_by?: string | null;
           updated_by?: string | null;
         };
@@ -376,24 +392,38 @@ export interface Database {
         Row: {
           id: string;
           purchase_order_id: string;
-          inventory_item_id: string;
+          inventory_item_id: string | null;
+          organization_id: string | null;
+          product_id: string | null;
+          suggested_order_item_id: string | null;
           quantity_ordered: number | null;
           quantity_received: number | null;
           unit_price: number | null;
           line_total: number | null;
           uom: string | null;
           notes: string | null;
+          status: string | null;
+          metadata: Json | null;
+          created_at: string | null;
+          updated_at: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
           purchase_order_id: string;
-          inventory_item_id: string;
+          inventory_item_id?: string | null;
+          organization_id?: string | null;
+          product_id?: string | null;
+          suggested_order_item_id?: string | null;
           quantity_ordered?: number | null;
           quantity_received?: number | null;
           unit_price?: number | null;
           line_total?: number | null;
           uom?: string | null;
           notes?: string | null;
+          status?: string | null;
+          metadata?: Json | null;
+          deleted_at?: string | null;
         };
         Update: Partial<
           Database["public"]["Tables"]["purchase_order_items"]["Insert"]

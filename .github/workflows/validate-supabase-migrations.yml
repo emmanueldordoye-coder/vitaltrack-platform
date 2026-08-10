@@ -82,19 +82,30 @@ jobs:
                   print(f"  {path}")
               raise SystemExit("Migration file ordering does not match the Project Lighthouse validation order.")
 
-          seed = Path("database/seeds/004_project_lighthouse_dentira_demo.sql")
-          if not seed.exists():
-              raise SystemExit(f"Missing expected seed file: {seed}")
+          seeds = [
+              Path("database/seeds/004_project_lighthouse_dentira_demo.sql"),
+              Path("database/seeds/005_dentira_po_ptu317717.sql"),
+          ]
+          for seed in seeds:
+              if not seed.exists():
+                  raise SystemExit(f"Missing expected seed file: {seed}")
 
           security_validation = Path("database/validation/005_project_lighthouse_security_validation.sql")
           if not security_validation.exists():
               raise SystemExit(f"Missing expected security validation file: {security_validation}")
 
+          dentira_po_validation = Path("database/validation/006_dentira_po_ptu317717_validation.sql")
+          if not dentira_po_validation.exists():
+              raise SystemExit(f"Missing expected Dentira PO validation file: {dentira_po_validation}")
+
           print("Migration order:")
           for path in expected:
               print(f"  {path}")
-          print(f"Seed file: {seed}")
+          print("Seed files:")
+          for seed in seeds:
+              print(f"  {seed}")
           print(f"Security validation file: {security_validation}")
+          print(f"Dentira PO validation file: {dentira_po_validation}")
           PY
 
       - name: Check SQL files for static hazards
@@ -107,7 +118,9 @@ jobs:
             database/migrations/003_project_lighthouse_ordering_workflow.sql \
             database/migrations/004_project_lighthouse_security_hardening.sql \
             database/seeds/004_project_lighthouse_dentira_demo.sql \
-            database/validation/005_project_lighthouse_security_validation.sql
+            database/seeds/005_dentira_po_ptu317717.sql \
+            database/validation/005_project_lighthouse_security_validation.sql \
+            database/validation/006_dentira_po_ptu317717_validation.sql
           do
             echo "Checking ${file}"
             if grep -nE '^(<<<<<<<|=======|>>>>>>>)' "$file"; then
@@ -166,7 +179,9 @@ jobs:
         run: |
           set -euo pipefail
           supabase db query --linked --file database/seeds/004_project_lighthouse_dentira_demo.sql
+          supabase db query --linked --file database/seeds/005_dentira_po_ptu317717.sql
           supabase db query --linked --file database/seeds/004_project_lighthouse_dentira_demo.sql
+          supabase db query --linked --file database/seeds/005_dentira_po_ptu317717.sql
 
       - name: Verify Project Lighthouse schema
         run: |
@@ -338,6 +353,11 @@ jobs:
           set -euo pipefail
           supabase db query --linked --file database/validation/005_project_lighthouse_security_validation.sql
 
+      - name: Run Dentira PO purchasing-data validation
+        run: |
+          set -euo pipefail
+          supabase db query --linked --file database/validation/006_dentira_po_ptu317717_validation.sql
+
       - name: Print validation summary
         if: success()
         run: |
@@ -352,10 +372,13 @@ jobs:
             echo "  - database/migrations/002_product_master_catalog.sql"
             echo "  - database/migrations/003_project_lighthouse_ordering_workflow.sql"
             echo "  - database/migrations/004_project_lighthouse_security_hardening.sql"
-            echo "- Seed file executed twice: database/seeds/004_project_lighthouse_dentira_demo.sql"
+            echo "- Seed files executed twice:"
+            echo "  - database/seeds/004_project_lighthouse_dentira_demo.sql"
+            echo "  - database/seeds/005_dentira_po_ptu317717.sql"
             echo "- Expected tables, RLS, foreign keys, and indexes verified"
             echo "- Low-stock detection smoke check executed"
             echo "- Tenant-isolation security validation executed"
+            echo "- Dentira PO PTU317717 purchasing-data validation executed"
             echo "- Actions pinned to full commit SHAs; Supabase CLI pinned to 2.109.1"
             echo "- Production migration was not run by this workflow"
           } >> "$GITHUB_STEP_SUMMARY"
