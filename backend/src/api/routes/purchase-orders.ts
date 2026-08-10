@@ -4,6 +4,10 @@ import { z } from "zod";
 
 import type { Database, TableInsert, TableRow } from "../../types/database.js";
 import { createNotFoundError } from "../errors.js";
+import {
+  mapPurchaseOrder,
+  type PurchaseOrderRecord,
+} from "../mappers/purchase-orders.js";
 import { validate } from "../middleware/validate.js";
 import { sendSuccess } from "../response.js";
 import { handleRoute } from "../route-handler.js";
@@ -24,7 +28,22 @@ const attachItems = async (
 ) => {
   const { data: items, error } = await reqSupabase
     .from("purchase_order_items")
-    .select("*")
+    .select(
+      `
+        *,
+        products (
+          id,
+          sku,
+          name,
+          brand_name,
+          metadata,
+          manufacturers (
+            id,
+            name
+          )
+        )
+      `,
+    )
     .eq("purchase_order_id", purchaseOrder.id)
     .order("id", { ascending: true });
 
@@ -32,10 +51,10 @@ const attachItems = async (
     throwSupabaseError("Unable to load purchase order items.", error);
   }
 
-  return {
-    ...purchaseOrder,
-    items: items ?? [],
-  };
+  return mapPurchaseOrder({
+    ...(purchaseOrder as PurchaseOrderRecord),
+    purchase_order_items: items ?? [],
+  });
 };
 
 export const purchaseOrdersRouter = Router();
@@ -44,12 +63,42 @@ purchaseOrdersRouter.get(
   "/",
   validate({ query: listPurchaseOrdersQuerySchema }),
   handleRoute(async (req, res) => {
-    const { facilityId, limit, status, supplierId } =
-      req.context.validated?.query as PurchaseOrdersQuery;
+    const { facilityId, limit, status, supplierId } = req.context.validated
+      ?.query as PurchaseOrdersQuery;
 
     let query = req.context.supabase
       .from("purchase_orders")
-      .select("*")
+      .select(
+        `
+          *,
+          suppliers (
+            id,
+            name,
+            supplier_code
+          ),
+          vendors (
+            id,
+            name,
+            vendor_code
+          ),
+          purchase_order_items (
+            *,
+            products (
+              id,
+              sku,
+              name,
+              brand_name,
+              metadata,
+              manufacturers (
+                id,
+                name
+              )
+            )
+          )
+        `,
+      )
+      .eq("organization_id", req.context.organizationId!)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -71,7 +120,11 @@ purchaseOrdersRouter.get(
       throwSupabaseError("Unable to list purchase orders.", error);
     }
 
-    sendSuccess(req, res, data ?? []);
+    sendSuccess(
+      req,
+      res,
+      ((data ?? []) as PurchaseOrderRecord[]).map(mapPurchaseOrder),
+    );
   }),
 );
 
@@ -79,12 +132,30 @@ purchaseOrdersRouter.get(
   "/:id",
   validate({ params: idParamSchema }),
   handleRoute(async (req, res) => {
-    const { id } = req.context.validated?.params as z.infer<typeof idParamSchema>;
+    const { id } = req.context.validated?.params as z.infer<
+      typeof idParamSchema
+    >;
 
     const { data, error } = await req.context.supabase
       .from("purchase_orders")
-      .select("*")
+      .select(
+        `
+          *,
+          suppliers (
+            id,
+            name,
+            supplier_code
+          ),
+          vendors (
+            id,
+            name,
+            vendor_code
+          )
+        `,
+      )
       .eq("id", id)
+      .eq("organization_id", req.context.organizationId!)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (error) {
@@ -108,6 +179,7 @@ purchaseOrdersRouter.post(
     const purchaseOrderPayload: TableInsert<"purchase_orders"> = {
       facility_id: body.facilityId,
       supplier_id: body.supplierId ?? null,
+      organization_id: req.context.organizationId!,
       po_number: body.poNumber,
       po_date: body.poDate,
       expected_delivery_date: body.expectedDeliveryDate ?? null,
@@ -120,14 +192,18 @@ purchaseOrdersRouter.post(
       updated_by: req.context.user?.id ?? null,
     };
 
-    const { data: createdOrder, error: purchaseOrderError } = await req.context.supabase
-      .from("purchase_orders")
-      .insert(purchaseOrderPayload)
-      .select("*")
-      .single();
+    const { data: createdOrder, error: purchaseOrderError } =
+      await req.context.supabase
+        .from("purchase_orders")
+        .insert(purchaseOrderPayload)
+        .select("*")
+        .single();
 
     if (purchaseOrderError) {
-      throwSupabaseError("Unable to create the purchase order.", purchaseOrderError);
+      throwSupabaseError(
+        "Unable to create the purchase order.",
+        purchaseOrderError,
+      );
     }
 
     sendSuccess(req, res, createdOrder, 201);

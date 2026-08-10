@@ -107,6 +107,24 @@ The seed creates:
 - Dental supply units, categories, and product catalog rows
 - Location-level `inventory_levels` with realistic par levels and reorder points
 
+Load the verified Dentira PO evidence seed after the pilot seed:
+
+```bash
+psql $DATABASE_URL -f database/seeds/005_dentira_po_ptu317717.sql
+```
+
+`005_dentira_po_ptu317717.sql` is backed by the structured source artifact
+`database/sources/dentira_po_ptu317717.json`. It loads purchase order
+`PTU317717`, Dentira order number `6209555669`, 42 source-backed product catalog
+rows, 42 purchase order items, 63 ordered units, and a reconciled order total of
+`USD 1,384.47`.
+
+This PO evidence is deliberately separated from inventory state. It does not
+create `inventory_levels`, storage locations, par levels, reorder points,
+receiving events, shipment status, approval status, delivery status, savings, or
+usage velocity. The existing inventory page should continue to show only
+products with validated inventory-level records.
+
 After seeding, low-stock rows are available through:
 
 ```sql

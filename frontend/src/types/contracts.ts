@@ -94,7 +94,17 @@ export interface LegacyInventoryItem {
 export interface PurchaseOrderItem {
   id: string;
   purchase_order_id: string;
-  inventory_item_id: string;
+  inventory_item_id: string | null;
+  organization_id?: string | null;
+  product_id?: string | null;
+  product_name?: string | null;
+  product_sku?: string | null;
+  raw_description?: string | null;
+  brand_or_manufacturer?: string | null;
+  vendor_item_number?: string | null;
+  source_line_number?: number | null;
+  image_reference?: string | null;
+  image_source_page?: string | null;
   quantity_ordered: number | null;
   quantity_received: number | null;
   unit_price: number | null;
@@ -105,9 +115,14 @@ export interface PurchaseOrderItem {
 
 export interface PurchaseOrder {
   id: string;
+  organization_id?: string | null;
   facility_id: string;
   supplier_id: string | null;
+  supplier_name?: string | null;
+  vendor_id?: string | null;
+  vendor_name?: string | null;
   po_number: string;
+  order_number?: string | null;
   po_date: string;
   expected_delivery_date: string | null;
   actual_delivery_date: string | null;
@@ -115,6 +130,11 @@ export interface PurchaseOrder {
   total_amount: number | null;
   currency: string | null;
   notes: string | null;
+  line_item_count?: number;
+  ordered_unit_count?: number;
+  source_total_items?: number | null;
+  source_status_label?: string | null;
+  items?: PurchaseOrderItem[];
   created_by: string | null;
   updated_by: string | null;
   created_at: string | null;

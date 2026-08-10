@@ -66,6 +66,11 @@ class FakeQueryBuilder implements PromiseLike<QueryResult> {
     return this;
   }
 
+  public is(column: string, value: unknown) {
+    this.state.filters.push({ type: "is", column, value });
+    return this;
+  }
+
   public ilike(column: string, value: unknown) {
     this.state.filters.push({ type: "ilike", column, value });
     return this;
@@ -382,6 +387,126 @@ test("GET /api/v1/purchase-orders rejects unauthorized access", async () => {
 
   assert.equal(response.status, 401);
   assert.equal(response.body.error.code, "AUTH_HEADER_MISSING");
+});
+
+test("GET /api/v1/purchase-orders maps Dentira PO source-backed fields", async () => {
+  let observedFilters: QueryState["filters"] = [];
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      supabase: createFakeSupabase({
+        purchase_orders: (state) => {
+          observedFilters = state.filters;
+
+          return {
+            data: [
+              {
+                id: "po-dentira",
+                organization_id: "org-dentira",
+                facility_id: "facility-dentira",
+                supplier_id: "supplier-patterson",
+                vendor_id: "vendor-patterson",
+                suggested_order_id: null,
+                po_number: "PTU317717",
+                po_date: "2026-06-12T00:00:00",
+                expected_delivery_date: null,
+                actual_delivery_date: null,
+                status: null,
+                total_amount: 1384.47,
+                estimated_savings: 0,
+                currency: "USD",
+                confirmation_number: null,
+                mock_supplier_submission: false,
+                notes: null,
+                metadata: {
+                  dentira_order_number: "6209555669",
+                  stated_total_items: 42,
+                  calculated_ordered_units: 63,
+                  status_source: "not_available",
+                },
+                deleted_at: null,
+                created_by: null,
+                updated_by: null,
+                created_at: "2026-06-12T00:00:00",
+                updated_at: "2026-06-12T00:00:00",
+                suppliers: {
+                  id: "supplier-patterson",
+                  name: "Patterson Dental Supply Inc",
+                  supplier_code: "PATTERSON_DENTAL_SUPPLY_INC",
+                },
+                vendors: {
+                  id: "vendor-patterson",
+                  name: "Patterson Dental Supply Inc",
+                  vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+                },
+                purchase_order_items: [
+                  {
+                    id: "po-line-1",
+                    purchase_order_id: "po-dentira",
+                    inventory_item_id: null,
+                    organization_id: "org-dentira",
+                    product_id: "product-1",
+                    suggested_order_item_id: null,
+                    quantity_ordered: 2,
+                    quantity_received: 0,
+                    unit_price: 7.83,
+                    line_total: 15.66,
+                    uom: "order-unit",
+                    notes:
+                      "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+                    status: "open",
+                    metadata: {
+                      source_line_number: 1,
+                      vendor_item_number: "070367854",
+                      raw_product_description:
+                        "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+                    },
+                    created_at: null,
+                    updated_at: null,
+                    deleted_at: null,
+                    products: {
+                      id: "product-1",
+                      sku: "DENTIRA-PTU317717-001",
+                      name: "Braval Nitrile PF Exam Gloves, Lavender Blue, Small",
+                      brand_name: "Braval",
+                      metadata: {
+                        vendor_item_number: "070367854",
+                      },
+                      manufacturers: {
+                        id: "manufacturer-braval",
+                        name: "Braval",
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+            error: null,
+          };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app).get("/api/v1/purchase-orders");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    observedFilters.filter((filter) => filter.type === "eq"),
+    [{ type: "eq", column: "organization_id", value: "org-dentira" }],
+  );
+  assert.equal(response.body.data[0].po_number, "PTU317717");
+  assert.equal(response.body.data[0].order_number, "6209555669");
+  assert.equal(
+    response.body.data[0].supplier_name,
+    "Patterson Dental Supply Inc",
+  );
+  assert.equal(response.body.data[0].line_item_count, 1);
+  assert.equal(response.body.data[0].ordered_unit_count, 2);
+  assert.equal(response.body.data[0].status, null);
+  assert.equal(response.body.data[0].items[0].vendor_item_number, "070367854");
+  assert.equal(response.body.data[0].items[0].brand_or_manufacturer, "Braval");
 });
 
 test("GET /api/v1/purchase-orders/:id returns 404 when RLS hides another tenant's row", async () => {
