@@ -17,6 +17,15 @@ export const productCatalogRouter = Router();
 
 const normalizeSearch = (value: string) => value.trim().toLowerCase();
 
+const metadataSource = (metadata: ProductCatalogRecord["metadata"]) => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const source = metadata.source;
+  return typeof source === "string" ? source : null;
+};
+
 const matchesSearch = (
   item: ReturnType<typeof mapProductCatalogItem>,
   search: string,
@@ -79,7 +88,6 @@ productCatalogRouter.get(
       .eq("organization_id", req.context.organizationId!)
       .eq("products.organization_id", req.context.organizationId!)
       .eq("purchase_orders.organization_id", req.context.organizationId!)
-      .neq("purchase_orders.status", "draft")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(limit)) as {
@@ -92,6 +100,9 @@ productCatalogRouter.get(
     }
 
     const mapped = (data ?? [])
+      .filter(
+        (record) => metadataSource(record.metadata) !== "product_catalog_draft",
+      )
       .map(mapProductCatalogItem)
       .filter((item) => item.product_id && item.product_name)
       .sort(

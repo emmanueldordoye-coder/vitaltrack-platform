@@ -66,11 +66,6 @@ class FakeQueryBuilder implements PromiseLike<QueryResult> {
     return this;
   }
 
-  public neq(column: string, value: unknown) {
-    this.state.filters.push({ type: "neq", column, value });
-    return this;
-  }
-
   public is(column: string, value: unknown) {
     this.state.filters.push({ type: "is", column, value });
     return this;
@@ -1340,13 +1335,6 @@ test("GET /api/v1/product-catalog maps PO-backed product identity without invent
       },
     ],
   );
-  assert.deepEqual(
-    observedFilters.find(
-      (filter) =>
-        filter.type === "neq" && filter.column === "purchase_orders.status",
-    ),
-    { type: "neq", column: "purchase_orders.status", value: "draft" },
-  );
   assert.equal(response.body.data[0].product_id, "product-1");
   assert.equal(response.body.data[0].source_po_number, "PTU317717");
   assert.equal(response.body.data[0].source_order_number, "6209555669");
@@ -1365,6 +1353,103 @@ test("GET /api/v1/product-catalog maps PO-backed product identity without invent
   assert.equal("par_level" in response.body.data[0], false);
   assert.equal("reorder_point" in response.body.data[0], false);
   assert.equal("is_low_stock" in response.body.data[0], false);
+});
+
+test("GET /api/v1/product-catalog excludes internally-created draft PO lines", async () => {
+  const sourceLine = {
+    id: "poi-source",
+    purchase_order_id: "po-source",
+    inventory_item_id: null,
+    organization_id: "org-dentira",
+    product_id: "product-source",
+    suggested_order_item_id: null,
+    quantity_ordered: 1,
+    quantity_received: 0,
+    unit_price: 7.83,
+    line_total: 7.83,
+    uom: "order-unit",
+    notes:
+      "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+    status: "open",
+    metadata: {
+      source: "dentira_po_ptu317717",
+      source_line_number: 1,
+      normalized_product_name:
+        "Braval Nitrile PF Exam Gloves, Lavender Blue, Small",
+      vendor_item_number: "070367854",
+    },
+    created_at: "2026-07-01T00:00:00Z",
+    updated_at: "2026-07-01T00:00:00Z",
+    deleted_at: null,
+    products: {
+      id: "product-source",
+      sku: "DENTIRA-PTU317717-001",
+      name: "Braval Nitrile PF Exam Gloves, Lavender Blue, Small",
+      description: null,
+      manufacturer_part_number: "070367854",
+      brand_name: "Braval",
+      metadata: null,
+      manufacturers: null,
+    },
+    purchase_orders: {
+      id: "po-source",
+      po_number: "PTU317717",
+      po_date: "2026-06-12T00:00:00Z",
+      confirmation_number: null,
+      currency: "USD",
+      metadata: {
+        supplier: "PATTERSON DENTAL SUPPLY INC",
+        dentira_order_number: "6209555669",
+      },
+      vendors: {
+        id: "vendor-1",
+        name: "Patterson Dental Supply Inc",
+        vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+      },
+    },
+  };
+
+  const draftLine = {
+    ...sourceLine,
+    id: "poi-draft",
+    purchase_order_id: "po-draft",
+    product_id: "product-draft",
+    metadata: {
+      source: "product_catalog_draft",
+      source_po_number: "PTU317717",
+      source_line_number: 1,
+      normalized_product_name:
+        "Braval Nitrile PF Exam Gloves, Lavender Blue, Small",
+      vendor_item_number: "070367854",
+    },
+    products: {
+      ...sourceLine.products,
+      id: "product-draft",
+    },
+    purchase_orders: {
+      ...sourceLine.purchase_orders,
+      id: "po-draft",
+      po_number: "VT-DRAFT-20260811-ABC12345",
+    },
+  };
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      supabase: createFakeSupabase({
+        purchase_order_items: () => ({
+          data: [draftLine, sourceLine],
+          error: null,
+        }),
+      }),
+    }),
+  });
+
+  const response = await supertest(app).get("/api/v1/product-catalog");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.length, 1);
+  assert.equal(response.body.data[0].source_po_number, "PTU317717");
 });
 
 test("GET /api/v1/product-catalog searches source-backed product identity fields", async () => {
