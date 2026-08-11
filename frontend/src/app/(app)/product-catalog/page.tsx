@@ -4,7 +4,7 @@ import {
 } from "@/components/auth/backend-auth-error";
 import { ProductCatalogList } from "@/components/product-catalog/product-catalog-list";
 import { createServerApiClient } from "@/lib/api/server";
-import type { ProductCatalogItem } from "@/types/contracts";
+import type { Facility, ProductCatalogItem } from "@/types/contracts";
 
 interface ProductCatalogPageProps {
   searchParams?: {
@@ -23,12 +23,18 @@ export default async function ProductCatalogPage({
   const apiClient = await createServerApiClient();
   const searchQuery = getSearchQuery(searchParams?.search);
   let items: ProductCatalogItem[];
+  let facilities: Facility[];
 
   try {
-    items = await apiClient.listProductCatalog({
-      limit: 100,
-      search: searchQuery || undefined,
-    });
+    [items, facilities] = await Promise.all([
+      apiClient.listProductCatalog({
+        limit: 100,
+        search: searchQuery || undefined,
+      }),
+      apiClient.listFacilities({
+        limit: 1,
+      }),
+    ]);
   } catch (error) {
     if (isBackendAuthError(error)) {
       return <BackendAuthError error={error} />;
@@ -37,5 +43,11 @@ export default async function ProductCatalogPage({
     throw error;
   }
 
-  return <ProductCatalogList items={items} searchQuery={searchQuery} />;
+  return (
+    <ProductCatalogList
+      items={items}
+      primaryFacility={facilities[0] ?? null}
+      searchQuery={searchQuery}
+    />
+  );
 }

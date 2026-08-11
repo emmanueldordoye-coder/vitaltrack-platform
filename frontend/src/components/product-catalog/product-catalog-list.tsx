@@ -1,15 +1,25 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState, useTransition } from "react";
+
+import { createDraftPurchaseOrder } from "@/app/(app)/product-catalog/actions";
+import type { DraftPurchaseOrderActionResult } from "@/app/(app)/product-catalog/action-types";
+import type { Facility, ProductCatalogItem } from "@/types/contracts";
 import { ProductThumbnail } from "./product-thumbnail";
-import type { ProductCatalogItem } from "@/types/contracts";
 
 interface ProductCatalogListProps {
   items: ProductCatalogItem[];
+  primaryFacility: Facility | null;
   searchQuery?: string;
 }
 
-const formatCurrency = (
-  value: number | null,
-  currency: string | null,
-) =>
+interface DraftLine {
+  item: ProductCatalogItem;
+  quantity: number;
+}
+
+const formatCurrency = (value: number | null, currency: string | null) =>
   value === null
     ? "Not available"
     : `${currency ?? "USD"} ${value.toLocaleString("en-US", {
@@ -63,14 +73,290 @@ const SourceBadge = ({ item }: { item: ProductCatalogItem }) =>
     </span>
   );
 
+const DraftOrderPanel = ({
+  draftLines,
+  primaryFacility,
+  actionResult,
+  isPending,
+  onQuantityChange,
+  onRemove,
+  onCreateDraft,
+}: {
+  draftLines: DraftLine[];
+  primaryFacility: Facility | null;
+  actionResult: DraftPurchaseOrderActionResult | null;
+  isPending: boolean;
+  onQuantityChange: (productId: string, quantity: number) => void;
+  onRemove: (productId: string) => void;
+  onCreateDraft: () => void;
+}) => {
+  const vendorIds = new Set(
+    draftLines
+      .map((line) => line.item.vendor_id)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const itemCount = draftLines.reduce(
+    (total, line) => total + line.quantity,
+    0,
+  );
+  const subtotal = draftLines.reduce(
+    (total, line) =>
+      total + (line.item.last_known_unit_price ?? 0) * line.quantity,
+    0,
+  );
+  const supplierName = draftLines[0]?.item.supplier_name ?? "Selected supplier";
+  const hasMissingPrice = draftLines.some(
+    (line) => line.item.last_known_unit_price === null,
+  );
+  const canCreate =
+    draftLines.length > 0 &&
+    Boolean(primaryFacility) &&
+    vendorIds.size === 1 &&
+    !hasMissingPrice &&
+    !isPending;
+
+  return (
+    <aside
+      className="rounded-lg border border-lighthouse-primary/15 bg-white p-5 shadow-sm"
+      data-testid="draft-order-panel"
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
+            Internal draft
+          </p>
+          <h2 className="mt-2 text-xl font-bold text-lighthouse-primary">
+            Draft Purchase Order
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Add catalog products to prepare a VitalTrack draft. Supplier
+            submission integration is not enabled in this demo environment.
+          </p>
+        </div>
+        <div className="rounded-md bg-slate-50 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+            Draft subtotal
+          </p>
+          <p
+            className="mt-1 text-lg font-bold text-lighthouse-primary"
+            data-testid="draft-order-subtotal"
+          >
+            {formatCurrency(subtotal, draftLines[0]?.item.currency ?? "USD")}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <p className="font-semibold text-slate-500">Facility</p>
+          <p className="mt-1 font-bold text-slate-900">
+            {primaryFacility?.name ?? "No facility available"}
+          </p>
+        </div>
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <p className="font-semibold text-slate-500">Supplier</p>
+          <p className="mt-1 font-bold text-slate-900">{supplierName}</p>
+        </div>
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <p className="font-semibold text-slate-500">Items selected</p>
+          <p
+            className="mt-1 font-bold text-slate-900"
+            data-testid="draft-order-item-count"
+          >
+            {itemCount}
+          </p>
+        </div>
+      </div>
+
+      {draftLines.length === 0 ? (
+        <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          Select products from the catalog to review an internal draft PO.
+        </div>
+      ) : (
+        <div className="mt-4 divide-y divide-slate-100 rounded-md border border-slate-200">
+          {draftLines.map((line) => (
+            <div
+              key={line.item.product_id}
+              className="grid gap-3 p-3 md:grid-cols-[minmax(0,1fr)_160px_96px]"
+              data-testid="draft-order-row"
+            >
+              <div className="min-w-0">
+                <p className="font-bold text-slate-900">
+                  {line.item.product_name}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {line.item.vendor_item_number ?? "Item number not available"}{" "}
+                  ·{" "}
+                  {formatCurrency(
+                    line.item.last_known_unit_price,
+                    line.item.currency,
+                  )}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                Qty
+                <input
+                  aria-label={`Quantity for ${line.item.product_name}`}
+                  className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm outline-none focus:border-lighthouse-accent focus:ring-2 focus:ring-lighthouse-accent/15"
+                  min={1}
+                  max={999}
+                  type="number"
+                  value={line.quantity}
+                  onChange={(event) =>
+                    onQuantityChange(
+                      line.item.product_id,
+                      Number(event.target.value),
+                    )
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                className="text-left text-sm font-bold text-slate-500 hover:text-red-700 md:text-right"
+                onClick={() => onRemove(line.item.product_id)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {vendorIds.size > 1 ? (
+        <p className="mt-3 text-sm font-semibold text-amber-700">
+          Review one supplier at a time before creating a draft PO.
+        </p>
+      ) : null}
+      {hasMissingPrice ? (
+        <p className="mt-3 text-sm font-semibold text-amber-700">
+          Every draft line needs a source-backed unit price.
+        </p>
+      ) : null}
+
+      {actionResult ? (
+        <div
+          className={`mt-4 rounded-md border px-4 py-3 text-sm ${
+            actionResult.status === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-red-200 bg-red-50 text-red-900"
+          }`}
+          data-testid="draft-order-message"
+        >
+          <p className="font-semibold">{actionResult.message}</p>
+          {actionResult.status === "success" ? (
+            <Link
+              className="mt-2 inline-flex font-bold text-lighthouse-primary underline"
+              href="/purchase-orders"
+            >
+              View Purchase Orders
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-slate-500">
+          Draft POs stay inside VitalTrack until a real supplier submission
+          integration is enabled.
+        </p>
+        <button
+          type="button"
+          className="rounded-md bg-lighthouse-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-lighthouse-primary/90 disabled:cursor-not-allowed disabled:bg-slate-300"
+          data-testid="draft-order-create"
+          disabled={!canCreate}
+          onClick={onCreateDraft}
+        >
+          {isPending ? "Creating draft..." : "Create Draft PO"}
+        </button>
+      </div>
+    </aside>
+  );
+};
+
 export const ProductCatalogList = ({
   items,
+  primaryFacility,
   searchQuery = "",
 }: ProductCatalogListProps) => {
+  const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
+  const [actionResult, setActionResult] =
+    useState<DraftPurchaseOrderActionResult | null>(null);
+  const [isPending, startTransition] = useTransition();
   const supplierCount = uniqueCount(items.map((item) => item.supplier_name));
   const sourceOrderCount = uniqueCount(
     items.map((item) => item.source_po_number),
   );
+  const draftVendorId = useMemo(() => {
+    const vendorIds = new Set(
+      draftLines
+        .map((line) => line.item.vendor_id)
+        .filter((value): value is string => Boolean(value)),
+    );
+
+    return vendorIds.size === 1 ? Array.from(vendorIds)[0] : null;
+  }, [draftLines]);
+
+  const addToDraft = (item: ProductCatalogItem) => {
+    setActionResult(null);
+    setDraftLines((current) => {
+      const existingLine = current.find(
+        (line) => line.item.product_id === item.product_id,
+      );
+
+      if (existingLine) {
+        return current.map((line) =>
+          line.item.product_id === item.product_id
+            ? { ...line, quantity: line.quantity + 1 }
+            : line,
+        );
+      }
+
+      return [...current, { item, quantity: 1 }];
+    });
+  };
+
+  const setQuantity = (productId: string, quantity: number) => {
+    setActionResult(null);
+    const safeQuantity = Number.isFinite(quantity)
+      ? Math.min(Math.max(Math.trunc(quantity), 1), 999)
+      : 1;
+    setDraftLines((current) =>
+      current.map((line) =>
+        line.item.product_id === productId
+          ? { ...line, quantity: safeQuantity }
+          : line,
+      ),
+    );
+  };
+
+  const removeFromDraft = (productId: string) => {
+    setActionResult(null);
+    setDraftLines((current) =>
+      current.filter((line) => line.item.product_id !== productId),
+    );
+  };
+
+  const createDraft = () => {
+    if (!primaryFacility || !draftVendorId || draftLines.length === 0) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await createDraftPurchaseOrder({
+        facilityId: primaryFacility.id,
+        vendorId: draftVendorId,
+        items: draftLines.map((line) => ({
+          productId: line.item.product_id,
+          quantityOrdered: line.quantity,
+        })),
+      });
+
+      setActionResult(result);
+      if (result.status === "success") {
+        setDraftLines([]);
+      }
+    });
+  };
 
   return (
     <section className="space-y-5">
@@ -134,6 +420,16 @@ export const ProductCatalogList = ({
           description="Supplier names available in the result set"
         />
       </div>
+
+      <DraftOrderPanel
+        actionResult={actionResult}
+        draftLines={draftLines}
+        isPending={isPending}
+        onCreateDraft={createDraft}
+        onQuantityChange={setQuantity}
+        onRemove={removeFromDraft}
+        primaryFacility={primaryFacility}
+      />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -239,6 +535,18 @@ export const ProductCatalogList = ({
                       Source description: {item.raw_description}
                     </p>
                   ) : null}
+
+                  <button
+                    type="button"
+                    className="mt-4 rounded-md bg-lighthouse-accent px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    data-testid="product-catalog-add-to-draft"
+                    disabled={
+                      !item.vendor_id || item.last_known_unit_price === null
+                    }
+                    onClick={() => addToDraft(item)}
+                  >
+                    Add to Draft
+                  </button>
                 </div>
               </article>
             ))}

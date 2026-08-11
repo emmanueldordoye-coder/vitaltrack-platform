@@ -16,7 +16,7 @@ const { createApp } = await import("../src/app.js");
 
 type QueryState = {
   table: keyof Database["public"]["Tables"];
-  operation: "select" | "insert";
+  operation: "select" | "insert" | "delete";
   payload?: unknown;
   filters: Array<{ type: string; column?: string; value?: unknown }>;
   limit?: number;
@@ -71,6 +71,11 @@ class FakeQueryBuilder implements PromiseLike<QueryResult> {
     return this;
   }
 
+  public in(column: string, value: unknown) {
+    this.state.filters.push({ type: "in", column, value });
+    return this;
+  }
+
   public ilike(column: string, value: unknown) {
     this.state.filters.push({ type: "ilike", column, value });
     return this;
@@ -84,6 +89,11 @@ class FakeQueryBuilder implements PromiseLike<QueryResult> {
   public insert(payload: unknown) {
     this.state.operation = "insert";
     this.state.payload = payload;
+    return this;
+  }
+
+  public delete() {
+    this.state.operation = "delete";
     return this;
   }
 
@@ -460,6 +470,335 @@ test("POST /api/v1/purchase-orders rejects nonexistent facilities before insert"
     ],
   );
   assert.equal(insertAttempted, false);
+});
+
+test("POST /api/v1/purchase-orders creates an internal draft PO from catalog products", async () => {
+  const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
+  const vendorId = "11111111-1111-4111-8111-111111111111";
+  const productId = "22222222-2222-4222-8222-222222222222";
+  let insertedOrder: TableInsert<"purchase_orders"> | undefined;
+  let insertedItems: Array<TableInsert<"purchase_order_items">> = [];
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      userId: "user-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({
+          data: { id: facilityId },
+          error: null,
+        }),
+        vendors: () => ({
+          data: {
+            id: vendorId,
+            name: "Patterson Dental Supply Inc",
+            vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+          },
+          error: null,
+        }),
+        purchase_orders: (state) => {
+          if (state.operation === "insert") {
+            insertedOrder = state.payload as TableInsert<"purchase_orders">;
+
+            return {
+              data: {
+                id: "po-draft",
+                suggested_order_id: null,
+                estimated_savings: 0,
+                confirmation_number: null,
+                deleted_at: null,
+                created_at: "2026-08-11T12:00:00Z",
+                updated_at: "2026-08-11T12:00:00Z",
+                ...insertedOrder,
+              },
+              error: null,
+            };
+          }
+
+          return { data: [], error: null };
+        },
+        purchase_order_items: (state) => {
+          if (state.operation === "insert") {
+            insertedItems = state.payload as Array<
+              TableInsert<"purchase_order_items">
+            >;
+
+            return { data: insertedItems, error: null };
+          }
+
+          const isSourceLookup = state.filters.some(
+            (filter) => filter.type === "in" && filter.column === "product_id",
+          );
+
+          if (isSourceLookup) {
+            return {
+              data: [
+                {
+                  id: "source-line-1",
+                  purchase_order_id: "source-po",
+                  inventory_item_id: null,
+                  organization_id: "org-dentira",
+                  product_id: productId,
+                  suggested_order_item_id: null,
+                  quantity_ordered: 2,
+                  quantity_received: 0,
+                  unit_price: 7.83,
+                  line_total: 15.66,
+                  uom: "order-unit",
+                  notes:
+                    "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+                  status: "open",
+                  metadata: {
+                    source_line_number: 1,
+                    vendor_item_number: "070367854",
+                    raw_product_description:
+                      "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+                  },
+                  created_at: null,
+                  updated_at: null,
+                  deleted_at: null,
+                  products: {
+                    id: productId,
+                    sku: "DENTIRA-PTU317717-001",
+                    name: "Braval Nitrile PF Exam Gloves",
+                    description: "Powder Free Lavender Blue Small 300/Pkg",
+                    brand_name: "Braval",
+                    metadata: {
+                      vendor_item_number: "070367854",
+                    },
+                    manufacturers: {
+                      id: "manufacturer-braval",
+                      name: "Braval",
+                    },
+                  },
+                  purchase_orders: {
+                    id: "source-po",
+                    po_number: "PTU317717",
+                    currency: "USD",
+                    vendor_id: vendorId,
+                    organization_id: "org-dentira",
+                    metadata: null,
+                    vendors: {
+                      id: vendorId,
+                      name: "Patterson Dental Supply Inc",
+                      vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+                    },
+                  },
+                },
+              ],
+              error: null,
+            };
+          }
+
+          return {
+            data: insertedItems.map((item, index) => ({
+              id: `draft-line-${index + 1}`,
+              created_at: null,
+              updated_at: null,
+              deleted_at: null,
+              suggested_order_item_id: null,
+              ...item,
+              products: {
+                id: productId,
+                sku: "DENTIRA-PTU317717-001",
+                name: "Braval Nitrile PF Exam Gloves",
+                brand_name: "Braval",
+                metadata: {
+                  vendor_item_number: "070367854",
+                },
+                manufacturers: {
+                  id: "manufacturer-braval",
+                  name: "Braval",
+                },
+              },
+            })),
+            error: null,
+          };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app)
+    .post("/api/v1/purchase-orders")
+    .send({
+      facilityId,
+      vendorId,
+      items: [
+        {
+          productId,
+          quantityOrdered: 2,
+        },
+      ],
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(insertedOrder?.organization_id, "org-dentira");
+  assert.equal(insertedOrder?.facility_id, facilityId);
+  assert.equal(insertedOrder?.vendor_id, vendorId);
+  assert.equal(insertedOrder?.status, "draft");
+  assert.equal(insertedOrder?.total_amount, 15.66);
+  assert.equal(insertedOrder?.mock_supplier_submission, false);
+  assert.match(String(insertedOrder?.po_number), /^VT-DRAFT-/);
+  assert.equal(insertedItems.length, 1);
+  assert.equal(insertedItems[0].product_id, productId);
+  assert.equal(insertedItems[0].inventory_item_id, null);
+  assert.equal(insertedItems[0].quantity_ordered, 2);
+  assert.equal(insertedItems[0].quantity_received, 0);
+  assert.equal(insertedItems[0].unit_price, 7.83);
+  assert.equal(insertedItems[0].line_total, 15.66);
+  assert.equal(response.body.data.status, "draft");
+  assert.equal(response.body.data.total_amount, 15.66);
+  assert.equal(
+    response.body.data.items[0].product_name,
+    "Braval Nitrile PF Exam Gloves",
+  );
+});
+
+test("POST /api/v1/purchase-orders rejects catalog products outside the selected supplier context", async () => {
+  const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
+  const vendorId = "11111111-1111-4111-8111-111111111111";
+  const productId = "22222222-2222-4222-8222-222222222222";
+  let insertAttempted = false;
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      userId: "user-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({ data: { id: facilityId }, error: null }),
+        vendors: () => ({
+          data: { id: vendorId, name: "Patterson Dental Supply Inc" },
+          error: null,
+        }),
+        purchase_order_items: () => ({ data: [], error: null }),
+        purchase_orders: () => {
+          insertAttempted = true;
+          return { data: null, error: null };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app)
+    .post("/api/v1/purchase-orders")
+    .send({
+      facilityId,
+      vendorId,
+      items: [{ productId, quantityOrdered: 1 }],
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error.code, "BAD_REQUEST");
+  assert.equal(insertAttempted, false);
+});
+
+test("POST /api/v1/purchase-orders removes the draft header if item insertion fails", async () => {
+  const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
+  const vendorId = "11111111-1111-4111-8111-111111111111";
+  const productId = "22222222-2222-4222-8222-222222222222";
+  let rollbackAttempted = false;
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      userId: "user-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({ data: { id: facilityId }, error: null }),
+        vendors: () => ({
+          data: { id: vendorId, name: "Patterson Dental Supply Inc" },
+          error: null,
+        }),
+        purchase_orders: (state) => {
+          if (state.operation === "delete") {
+            rollbackAttempted = true;
+            return { data: null, error: null };
+          }
+
+          if (state.operation === "insert") {
+            return {
+              data: {
+                id: "po-draft",
+                suggested_order_id: null,
+                estimated_savings: 0,
+                confirmation_number: null,
+                deleted_at: null,
+                created_at: "2026-08-11T12:00:00Z",
+                updated_at: "2026-08-11T12:00:00Z",
+                ...(state.payload as TableInsert<"purchase_orders">),
+              },
+              error: null,
+            };
+          }
+
+          return { data: [], error: null };
+        },
+        purchase_order_items: (state) => {
+          if (state.operation === "insert") {
+            return {
+              data: null,
+              error: {
+                message: "item insert failed",
+              },
+            };
+          }
+
+          return {
+            data: [
+              {
+                id: "source-line-1",
+                purchase_order_id: "source-po",
+                inventory_item_id: null,
+                organization_id: "org-dentira",
+                product_id: productId,
+                quantity_ordered: 1,
+                quantity_received: 0,
+                unit_price: 7.83,
+                line_total: 7.83,
+                uom: "order-unit",
+                notes: "Braval gloves",
+                status: "open",
+                metadata: { vendor_item_number: "070367854" },
+                created_at: null,
+                updated_at: null,
+                deleted_at: null,
+                products: {
+                  id: productId,
+                  sku: "DENTIRA-PTU317717-001",
+                  name: "Braval Nitrile PF Exam Gloves",
+                  description: "Powder Free Lavender Blue Small 300/Pkg",
+                  brand_name: "Braval",
+                  metadata: null,
+                  manufacturers: null,
+                },
+                purchase_orders: {
+                  id: "source-po",
+                  po_number: "PTU317717",
+                  currency: "USD",
+                  vendor_id: vendorId,
+                  organization_id: "org-dentira",
+                  metadata: null,
+                  vendors: null,
+                },
+              },
+            ],
+            error: null,
+          };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app)
+    .post("/api/v1/purchase-orders")
+    .send({
+      facilityId,
+      vendorId,
+      items: [{ productId, quantityOrdered: 1 }],
+    });
+
+  assert.equal(response.status, 500);
+  assert.equal(rollbackAttempted, true);
 });
 
 test("GET /api/v1/purchase-orders rejects unauthorized access", async () => {
