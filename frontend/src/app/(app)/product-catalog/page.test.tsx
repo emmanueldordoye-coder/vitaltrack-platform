@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import ProductCatalogPage from "./page";
 import { ApiClientError } from "@/lib/api/client";
@@ -80,11 +80,98 @@ describe("ProductCatalogPage", () => {
     expect(screen.getByText("USD 7.83")).toBeInTheDocument();
     expect(screen.getAllByText("Seen in PO PTU317717")).toHaveLength(2);
     expect(screen.getAllByTestId("product-catalog-row")).toHaveLength(2);
+    expect(
+      screen.getByAltText(
+        "Braval Nitrile PF Exam Gloves thumbnail from Dentira order evidence",
+      ),
+    ).toHaveAttribute(
+      "src",
+      expect.stringContaining(
+        "%2Fdentira%2Fproduct-catalog%2Fptu317717%2Fline-001.png",
+      ),
+    );
+    expect(
+      screen.getByAltText(
+        "Solmetex NXT Hg5 Collection Container thumbnail from Dentira order evidence",
+      ),
+    ).toHaveAttribute(
+      "src",
+      expect.stringContaining(
+        "%2Fdentira%2Fproduct-catalog%2Fptu317717%2Fline-008.png",
+      ),
+    );
     expect(screen.queryByText(/^Qty$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Par$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Reorder$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Location$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Low stock$/i)).not.toBeInTheDocument();
+  });
+
+  it("renders all 42 PO-backed thumbnail mappings", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listProductCatalog: jest.fn().mockResolvedValue(
+        Array.from({ length: 42 }, (_, index) =>
+          makeCatalogItem({
+            product_id: `product-${index + 1}`,
+            product_name: `Dentira Catalog Product ${index + 1}`,
+            vendor_item_number: `ITEM-${String(index + 1).padStart(3, "0")}`,
+            source_line_number: index + 1,
+          }),
+        ),
+      ),
+    } as never);
+
+    render(await ProductCatalogPage({}));
+
+    expect(screen.getAllByTestId("product-catalog-row")).toHaveLength(42);
+    expect(
+      within(
+        screen.getByTestId("product-catalog-summary-products-shown"),
+      ).getByText("42"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText(
+        "Dentira Catalog Product 42 thumbnail from Dentira order evidence",
+      ),
+    ).toHaveAttribute(
+      "src",
+      expect.stringContaining(
+        "%2Fdentira%2Fproduct-catalog%2Fptu317717%2Fline-042.png",
+      ),
+    );
+  });
+
+  it("uses a neutral placeholder when no reliable thumbnail mapping exists", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listProductCatalog: jest.fn().mockResolvedValue([
+        makeCatalogItem({
+          source_po_number: "OTHERPO",
+          source_line_number: 1,
+        }),
+      ]),
+    } as never);
+
+    render(await ProductCatalogPage({}));
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getByText("Catalog")).toBeInTheDocument();
+  });
+
+  it("falls back to the neutral placeholder if a mapped thumbnail fails to load", async () => {
+    mockedCreateServerApiClient.mockResolvedValue({
+      listProductCatalog: jest.fn().mockResolvedValue([makeCatalogItem()]),
+    } as never);
+
+    render(await ProductCatalogPage({}));
+
+    fireEvent.error(
+      screen.getByAltText(
+        "Braval Nitrile PF Exam Gloves thumbnail from Dentira order evidence",
+      ),
+    );
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getByText("Catalog")).toBeInTheDocument();
   });
 
   it("passes search through to the product catalog endpoint", async () => {
