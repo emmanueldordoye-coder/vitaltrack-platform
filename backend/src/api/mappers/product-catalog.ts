@@ -95,12 +95,14 @@ export const mapProductCatalogItem = (record: ProductCatalogRecord) => {
     metadataString(productMetadata, "image_source");
 
   return {
+    source_purchase_order_item_id: record.id,
     product_id: product?.id ?? record.product_id,
     sku: product?.sku ?? null,
     product_name:
       product?.name ?? metadataString(itemMetadata, "normalized_product_name"),
     product_description:
-      product?.description ?? metadataString(itemMetadata, "raw_product_description"),
+      product?.description ??
+      metadataString(itemMetadata, "raw_product_description"),
     raw_description:
       record.notes ?? metadataString(itemMetadata, "raw_product_description"),
     manufacturer_part_number: product?.manufacturer_part_number ?? null,
@@ -113,6 +115,7 @@ export const mapProductCatalogItem = (record: ProductCatalogRecord) => {
       vendor?.name ??
       metadataString(orderMetadata, "supplier") ??
       metadataString(itemMetadata, "supplier"),
+    vendor_id: vendor?.id ?? null,
     vendor_item_number:
       metadataString(itemMetadata, "vendor_item_number") ??
       metadataString(productMetadata, "vendor_item_number"),

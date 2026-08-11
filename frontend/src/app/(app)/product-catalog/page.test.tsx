@@ -14,6 +14,7 @@ const mockedCreateServerApiClient = jest.mocked(createServerApiClient);
 const makeCatalogItem = (
   overrides: Partial<ProductCatalogItem> = {},
 ): ProductCatalogItem => ({
+  source_purchase_order_item_id: "source-line-1",
   product_id: "product-1",
   sku: "DENTIRA-070367854",
   product_name: "Braval Nitrile PF Exam Gloves",
@@ -24,6 +25,7 @@ const makeCatalogItem = (
   manufacturer_part_number: null,
   brand_or_manufacturer: "Braval",
   supplier_name: "Patterson Dental Supply Inc",
+  vendor_id: "vendor-patterson",
   vendor_item_number: "070367854",
   last_known_unit_price: 7.83,
   currency: "USD",
@@ -55,7 +57,14 @@ describe("ProductCatalogPage", () => {
           vendor_item_number: "NXTHG5002CR",
           last_known_unit_price: 299.99,
           source_line_number: 8,
+          source_purchase_order_item_id: "source-line-2",
         }),
+      ]),
+      listFacilities: jest.fn().mockResolvedValue([
+        {
+          id: "facility-dentira",
+          name: "Dentira Main Office",
+        },
       ]),
     } as never);
 
@@ -69,17 +78,22 @@ describe("ProductCatalogPage", () => {
       ).getByText("2"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByTestId("product-catalog-summary-source-pos")).getByText(
-        "1",
-      ),
+      within(
+        screen.getByTestId("product-catalog-summary-source-pos"),
+      ).getByText("1"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Braval Nitrile PF Exam Gloves")).toBeInTheDocument();
+    expect(
+      screen.getByText("Braval Nitrile PF Exam Gloves"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Braval")).toBeInTheDocument();
     expect(screen.getAllByText("Patterson Dental Supply Inc")).toHaveLength(2);
     expect(screen.getByText("070367854")).toBeInTheDocument();
     expect(screen.getByText("USD 7.83")).toBeInTheDocument();
     expect(screen.getAllByText("Seen in PO PTU317717")).toHaveLength(2);
     expect(screen.getAllByTestId("product-catalog-row")).toHaveLength(2);
+    expect(screen.getByText("Draft Purchase Order")).toBeInTheDocument();
+    expect(screen.getByText("Dentira Main Office")).toBeInTheDocument();
+    expect(screen.getAllByText("Add to Draft")).toHaveLength(2);
     expect(
       screen.getByAltText(
         "Braval Nitrile PF Exam Gloves thumbnail from Dentira order evidence",
@@ -113,12 +127,19 @@ describe("ProductCatalogPage", () => {
         Array.from({ length: 42 }, (_, index) =>
           makeCatalogItem({
             product_id: `product-${index + 1}`,
+            source_purchase_order_item_id: `source-line-${index + 1}`,
             product_name: `Dentira Catalog Product ${index + 1}`,
             vendor_item_number: `ITEM-${String(index + 1).padStart(3, "0")}`,
             source_line_number: index + 1,
           }),
         ),
       ),
+      listFacilities: jest.fn().mockResolvedValue([
+        {
+          id: "facility-dentira",
+          name: "Dentira Main Office",
+        },
+      ]),
     } as never);
 
     render(await ProductCatalogPage({}));
@@ -149,6 +170,12 @@ describe("ProductCatalogPage", () => {
           source_line_number: 1,
         }),
       ]),
+      listFacilities: jest.fn().mockResolvedValue([
+        {
+          id: "facility-dentira",
+          name: "Dentira Main Office",
+        },
+      ]),
     } as never);
 
     render(await ProductCatalogPage({}));
@@ -160,6 +187,12 @@ describe("ProductCatalogPage", () => {
   it("falls back to the neutral placeholder if a mapped thumbnail fails to load", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listProductCatalog: jest.fn().mockResolvedValue([makeCatalogItem()]),
+      listFacilities: jest.fn().mockResolvedValue([
+        {
+          id: "facility-dentira",
+          name: "Dentira Main Office",
+        },
+      ]),
     } as never);
 
     render(await ProductCatalogPage({}));
@@ -176,8 +209,15 @@ describe("ProductCatalogPage", () => {
 
   it("passes search through to the product catalog endpoint", async () => {
     const listProductCatalog = jest.fn().mockResolvedValue([]);
+    const listFacilities = jest.fn().mockResolvedValue([
+      {
+        id: "facility-dentira",
+        name: "Dentira Main Office",
+      },
+    ]);
     mockedCreateServerApiClient.mockResolvedValue({
       listProductCatalog,
+      listFacilities,
     } as never);
 
     render(
@@ -192,9 +232,14 @@ describe("ProductCatalogPage", () => {
       limit: 100,
       search: "NXTHG5002CR",
     });
+    expect(listFacilities).toHaveBeenCalledWith({
+      limit: 25,
+    });
     expect(screen.getByDisplayValue("NXTHG5002CR")).toBeInTheDocument();
     expect(
-      screen.getByText('No source-backed catalog products match "NXTHG5002CR".'),
+      screen.getByText(
+        'No source-backed catalog products match "NXTHG5002CR".',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -207,6 +252,7 @@ describe("ProductCatalogPage", () => {
           status: 401,
         }),
       ),
+      listFacilities: jest.fn().mockResolvedValue([]),
     } as never);
 
     render(await ProductCatalogPage({}));

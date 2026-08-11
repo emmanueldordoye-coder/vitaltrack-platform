@@ -68,6 +68,7 @@ export interface InventoryCatalogItem {
 }
 
 export interface ProductCatalogItem {
+  source_purchase_order_item_id: string;
   product_id: string;
   sku: string | null;
   product_name: string | null;
@@ -76,6 +77,7 @@ export interface ProductCatalogItem {
   manufacturer_part_number: string | null;
   brand_or_manufacturer: string | null;
   supplier_name: string | null;
+  vendor_id: string | null;
   vendor_item_number: string | null;
   last_known_unit_price: number | null;
   currency: string | null;
@@ -230,8 +232,9 @@ export interface ListPurchaseOrdersQuery {
 export interface CreatePurchaseOrderInput {
   facilityId: string;
   supplierId?: string;
-  poNumber: string;
-  poDate: string;
+  vendorId?: string;
+  poNumber?: string;
+  poDate?: string;
   expectedDeliveryDate?: string;
   actualDeliveryDate?: string;
   status?:
@@ -239,6 +242,11 @@ export interface CreatePurchaseOrderInput {
   totalAmount?: number;
   currency?: string;
   notes?: string;
+  items?: Array<{
+    productId: string;
+    sourcePurchaseOrderItemId: string;
+    quantityOrdered: number;
+  }>;
 }
 
 export interface SessionUser {
