@@ -32,7 +32,7 @@ export default async function ProductCatalogPage({
         search: searchQuery || undefined,
       }),
       apiClient.listFacilities({
-        limit: 1,
+        limit: 25,
       }),
     ]);
   } catch (error) {
@@ -45,8 +45,8 @@ export default async function ProductCatalogPage({
 
   return (
     <ProductCatalogList
+      facilities={facilities}
       items={items}
-      primaryFacility={facilities[0] ?? null}
       searchQuery={searchQuery}
     />
   );

@@ -398,6 +398,7 @@ test("POST /api/v1/purchase-orders derives audit fields from the authenticated u
   );
   assert.equal(insertedPayload?.created_by, "user-current");
   assert.equal(insertedPayload?.updated_by, "user-current");
+  assert.deepEqual(insertedPayload?.metadata, {});
   assert.equal(response.body.data.created_by, "user-current");
 });
 
@@ -476,8 +477,10 @@ test("POST /api/v1/purchase-orders creates an internal draft PO from catalog pro
   const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
   const vendorId = "11111111-1111-4111-8111-111111111111";
   const productId = "22222222-2222-4222-8222-222222222222";
+  const sourceLineId = "33333333-3333-4333-8333-333333333333";
   let insertedOrder: TableInsert<"purchase_orders"> | undefined;
   let insertedItems: Array<TableInsert<"purchase_order_items">> = [];
+  let observedSourceLookup: QueryState["filters"] = [];
 
   const app = createApp({
     requestContextMiddleware: createRequestContextMiddleware({
@@ -527,14 +530,15 @@ test("POST /api/v1/purchase-orders creates an internal draft PO from catalog pro
           }
 
           const isSourceLookup = state.filters.some(
-            (filter) => filter.type === "in" && filter.column === "product_id",
+            (filter) => filter.type === "in" && filter.column === "id",
           );
 
           if (isSourceLookup) {
+            observedSourceLookup = state.filters;
             return {
               data: [
                 {
-                  id: "source-line-1",
+                  id: sourceLineId,
                   purchase_order_id: "source-po",
                   inventory_item_id: null,
                   organization_id: "org-dentira",
@@ -627,6 +631,7 @@ test("POST /api/v1/purchase-orders creates an internal draft PO from catalog pro
       items: [
         {
           productId,
+          sourcePurchaseOrderItemId: sourceLineId,
           quantityOrdered: 2,
         },
       ],
@@ -639,6 +644,14 @@ test("POST /api/v1/purchase-orders creates an internal draft PO from catalog pro
   assert.equal(insertedOrder?.status, "draft");
   assert.equal(insertedOrder?.total_amount, 15.66);
   assert.equal(insertedOrder?.mock_supplier_submission, false);
+  assert.deepEqual(
+    observedSourceLookup.find((filter) => filter.column === "id"),
+    {
+      type: "in",
+      column: "id",
+      value: [sourceLineId],
+    },
+  );
   assert.match(String(insertedOrder?.po_number), /^VT-DRAFT-/);
   assert.equal(insertedItems.length, 1);
   assert.equal(insertedItems[0].product_id, productId);
@@ -647,6 +660,11 @@ test("POST /api/v1/purchase-orders creates an internal draft PO from catalog pro
   assert.equal(insertedItems[0].quantity_received, 0);
   assert.equal(insertedItems[0].unit_price, 7.83);
   assert.equal(insertedItems[0].line_total, 15.66);
+  assert.equal(
+    (insertedItems[0].metadata as { source_purchase_order_item_id?: string })
+      .source_purchase_order_item_id,
+    sourceLineId,
+  );
   assert.equal(response.body.data.status, "draft");
   assert.equal(response.body.data.total_amount, 15.66);
   assert.equal(
@@ -659,6 +677,7 @@ test("POST /api/v1/purchase-orders rejects catalog products outside the selected
   const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
   const vendorId = "11111111-1111-4111-8111-111111111111";
   const productId = "22222222-2222-4222-8222-222222222222";
+  const sourceLineId = "33333333-3333-4333-8333-333333333333";
   let insertAttempted = false;
 
   const app = createApp({
@@ -685,7 +704,141 @@ test("POST /api/v1/purchase-orders rejects catalog products outside the selected
     .send({
       facilityId,
       vendorId,
-      items: [{ productId, quantityOrdered: 1 }],
+      items: [
+        {
+          productId,
+          sourcePurchaseOrderItemId: sourceLineId,
+          quantityOrdered: 1,
+        },
+      ],
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error.code, "BAD_REQUEST");
+  assert.equal(insertAttempted, false);
+});
+
+test("POST /api/v1/purchase-orders rejects mixed source currencies", async () => {
+  const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
+  const vendorId = "11111111-1111-4111-8111-111111111111";
+  const productIdOne = "22222222-2222-4222-8222-222222222222";
+  const productIdTwo = "44444444-4444-4444-8444-444444444444";
+  const sourceLineIdOne = "33333333-3333-4333-8333-333333333333";
+  const sourceLineIdTwo = "55555555-5555-4555-8555-555555555555";
+  let insertAttempted = false;
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      userId: "user-current",
+      supabase: createFakeSupabase({
+        facilities: () => ({ data: { id: facilityId }, error: null }),
+        vendors: () => ({
+          data: { id: vendorId, name: "Patterson Dental Supply Inc" },
+          error: null,
+        }),
+        purchase_orders: () => {
+          insertAttempted = true;
+          return { data: null, error: null };
+        },
+        purchase_order_items: () => ({
+          data: [
+            {
+              id: sourceLineIdOne,
+              purchase_order_id: "source-po-1",
+              inventory_item_id: null,
+              organization_id: "org-dentira",
+              product_id: productIdOne,
+              quantity_ordered: 1,
+              quantity_received: 0,
+              unit_price: 7.83,
+              line_total: 7.83,
+              uom: "order-unit",
+              notes: "Braval gloves",
+              status: "open",
+              metadata: null,
+              created_at: null,
+              updated_at: null,
+              deleted_at: null,
+              products: {
+                id: productIdOne,
+                sku: "DENTIRA-001",
+                name: "Braval gloves",
+                description: null,
+                brand_name: "Braval",
+                metadata: null,
+                manufacturers: null,
+              },
+              purchase_orders: {
+                id: "source-po-1",
+                po_number: "PTU317717",
+                currency: "USD",
+                vendor_id: vendorId,
+                organization_id: "org-dentira",
+                metadata: null,
+                vendors: null,
+              },
+            },
+            {
+              id: sourceLineIdTwo,
+              purchase_order_id: "source-po-2",
+              inventory_item_id: null,
+              organization_id: "org-dentira",
+              product_id: productIdTwo,
+              quantity_ordered: 1,
+              quantity_received: 0,
+              unit_price: 10,
+              line_total: 10,
+              uom: "order-unit",
+              notes: "Other product",
+              status: "open",
+              metadata: null,
+              created_at: null,
+              updated_at: null,
+              deleted_at: null,
+              products: {
+                id: productIdTwo,
+                sku: "DENTIRA-002",
+                name: "Other product",
+                description: null,
+                brand_name: null,
+                metadata: null,
+                manufacturers: null,
+              },
+              purchase_orders: {
+                id: "source-po-2",
+                po_number: "PO-EUR",
+                currency: "EUR",
+                vendor_id: vendorId,
+                organization_id: "org-dentira",
+                metadata: null,
+                vendors: null,
+              },
+            },
+          ],
+          error: null,
+        }),
+      }),
+    }),
+  });
+
+  const response = await supertest(app)
+    .post("/api/v1/purchase-orders")
+    .send({
+      facilityId,
+      vendorId,
+      items: [
+        {
+          productId: productIdOne,
+          sourcePurchaseOrderItemId: sourceLineIdOne,
+          quantityOrdered: 1,
+        },
+        {
+          productId: productIdTwo,
+          sourcePurchaseOrderItemId: sourceLineIdTwo,
+          quantityOrdered: 1,
+        },
+      ],
     });
 
   assert.equal(response.status, 400);
@@ -697,6 +850,7 @@ test("POST /api/v1/purchase-orders removes the draft header if item insertion fa
   const facilityId = "b3b9875f-2449-40d6-b825-0866712bce90";
   const vendorId = "11111111-1111-4111-8111-111111111111";
   const productId = "22222222-2222-4222-8222-222222222222";
+  const sourceLineId = "33333333-3333-4333-8333-333333333333";
   let rollbackAttempted = false;
 
   const app = createApp({
@@ -746,7 +900,7 @@ test("POST /api/v1/purchase-orders removes the draft header if item insertion fa
           return {
             data: [
               {
-                id: "source-line-1",
+                id: sourceLineId,
                 purchase_order_id: "source-po",
                 inventory_item_id: null,
                 organization_id: "org-dentira",
@@ -794,7 +948,13 @@ test("POST /api/v1/purchase-orders removes the draft header if item insertion fa
     .send({
       facilityId,
       vendorId,
-      items: [{ productId, quantityOrdered: 1 }],
+      items: [
+        {
+          productId,
+          sourcePurchaseOrderItemId: sourceLineId,
+          quantityOrdered: 1,
+        },
+      ],
     });
 
   assert.equal(response.status, 500);

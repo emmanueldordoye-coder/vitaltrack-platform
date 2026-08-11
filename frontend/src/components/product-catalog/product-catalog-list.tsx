@@ -9,8 +9,8 @@ import type { Facility, ProductCatalogItem } from "@/types/contracts";
 import { ProductThumbnail } from "./product-thumbnail";
 
 interface ProductCatalogListProps {
+  facilities: Facility[];
   items: ProductCatalogItem[];
-  primaryFacility: Facility | null;
   searchQuery?: string;
 }
 
@@ -75,21 +75,30 @@ const SourceBadge = ({ item }: { item: ProductCatalogItem }) =>
 
 const DraftOrderPanel = ({
   draftLines,
-  primaryFacility,
+  facilities,
+  selectedFacilityId,
   actionResult,
   isPending,
+  onFacilityChange,
   onQuantityChange,
   onRemove,
   onCreateDraft,
 }: {
   draftLines: DraftLine[];
-  primaryFacility: Facility | null;
+  facilities: Facility[];
+  selectedFacilityId: string;
   actionResult: DraftPurchaseOrderActionResult | null;
   isPending: boolean;
-  onQuantityChange: (productId: string, quantity: number) => void;
-  onRemove: (productId: string) => void;
+  onFacilityChange: (facilityId: string) => void;
+  onQuantityChange: (
+    sourcePurchaseOrderItemId: string,
+    quantity: number,
+  ) => void;
+  onRemove: (sourcePurchaseOrderItemId: string) => void;
   onCreateDraft: () => void;
 }) => {
+  const selectedFacility =
+    facilities.find((facility) => facility.id === selectedFacilityId) ?? null;
   const vendorIds = new Set(
     draftLines
       .map((line) => line.item.vendor_id)
@@ -110,7 +119,7 @@ const DraftOrderPanel = ({
   );
   const canCreate =
     draftLines.length > 0 &&
-    Boolean(primaryFacility) &&
+    Boolean(selectedFacility) &&
     vendorIds.size === 1 &&
     !hasMissingPrice &&
     !isPending;
@@ -148,10 +157,30 @@ const DraftOrderPanel = ({
 
       <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-          <p className="font-semibold text-slate-500">Facility</p>
-          <p className="mt-1 font-bold text-slate-900">
-            {primaryFacility?.name ?? "No facility available"}
-          </p>
+          <label
+            className="font-semibold text-slate-500"
+            htmlFor="draft-po-facility"
+          >
+            Facility
+          </label>
+          {facilities.length > 1 ? (
+            <select
+              className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1 font-bold text-slate-900 outline-none focus:border-lighthouse-accent focus:ring-2 focus:ring-lighthouse-accent/15"
+              id="draft-po-facility"
+              value={selectedFacilityId}
+              onChange={(event) => onFacilityChange(event.target.value)}
+            >
+              {facilities.map((facility) => (
+                <option key={facility.id} value={facility.id}>
+                  {facility.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-1 font-bold text-slate-900">
+              {selectedFacility?.name ?? "No facility available"}
+            </p>
+          )}
         </div>
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
           <p className="font-semibold text-slate-500">Supplier</p>
@@ -176,7 +205,7 @@ const DraftOrderPanel = ({
         <div className="mt-4 divide-y divide-slate-100 rounded-md border border-slate-200">
           {draftLines.map((line) => (
             <div
-              key={line.item.product_id}
+              key={line.item.source_purchase_order_item_id}
               className="grid gap-3 p-3 md:grid-cols-[minmax(0,1fr)_160px_96px]"
               data-testid="draft-order-row"
             >
@@ -204,7 +233,7 @@ const DraftOrderPanel = ({
                   value={line.quantity}
                   onChange={(event) =>
                     onQuantityChange(
-                      line.item.product_id,
+                      line.item.source_purchase_order_item_id,
                       Number(event.target.value),
                     )
                   }
@@ -213,7 +242,9 @@ const DraftOrderPanel = ({
               <button
                 type="button"
                 className="text-left text-sm font-bold text-slate-500 hover:text-red-700 md:text-right"
-                onClick={() => onRemove(line.item.product_id)}
+                onClick={() =>
+                  onRemove(line.item.source_purchase_order_item_id)
+                }
               >
                 Remove
               </button>
@@ -274,11 +305,14 @@ const DraftOrderPanel = ({
 };
 
 export const ProductCatalogList = ({
+  facilities,
   items,
-  primaryFacility,
   searchQuery = "",
 }: ProductCatalogListProps) => {
   const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
+  const [selectedFacilityId, setSelectedFacilityId] = useState(
+    facilities[0]?.id ?? "",
+  );
   const [actionResult, setActionResult] =
     useState<DraftPurchaseOrderActionResult | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -295,17 +329,22 @@ export const ProductCatalogList = ({
 
     return vendorIds.size === 1 ? Array.from(vendorIds)[0] : null;
   }, [draftLines]);
+  const selectedFacility =
+    facilities.find((facility) => facility.id === selectedFacilityId) ?? null;
 
   const addToDraft = (item: ProductCatalogItem) => {
     setActionResult(null);
     setDraftLines((current) => {
       const existingLine = current.find(
-        (line) => line.item.product_id === item.product_id,
+        (line) =>
+          line.item.source_purchase_order_item_id ===
+          item.source_purchase_order_item_id,
       );
 
       if (existingLine) {
         return current.map((line) =>
-          line.item.product_id === item.product_id
+          line.item.source_purchase_order_item_id ===
+          item.source_purchase_order_item_id
             ? { ...line, quantity: line.quantity + 1 }
             : line,
         );
@@ -315,38 +354,42 @@ export const ProductCatalogList = ({
     });
   };
 
-  const setQuantity = (productId: string, quantity: number) => {
+  const setQuantity = (sourcePurchaseOrderItemId: string, quantity: number) => {
     setActionResult(null);
     const safeQuantity = Number.isFinite(quantity)
       ? Math.min(Math.max(Math.trunc(quantity), 1), 999)
       : 1;
     setDraftLines((current) =>
       current.map((line) =>
-        line.item.product_id === productId
+        line.item.source_purchase_order_item_id === sourcePurchaseOrderItemId
           ? { ...line, quantity: safeQuantity }
           : line,
       ),
     );
   };
 
-  const removeFromDraft = (productId: string) => {
+  const removeFromDraft = (sourcePurchaseOrderItemId: string) => {
     setActionResult(null);
     setDraftLines((current) =>
-      current.filter((line) => line.item.product_id !== productId),
+      current.filter(
+        (line) =>
+          line.item.source_purchase_order_item_id !== sourcePurchaseOrderItemId,
+      ),
     );
   };
 
   const createDraft = () => {
-    if (!primaryFacility || !draftVendorId || draftLines.length === 0) {
+    if (!selectedFacility || !draftVendorId || draftLines.length === 0) {
       return;
     }
 
     startTransition(async () => {
       const result = await createDraftPurchaseOrder({
-        facilityId: primaryFacility.id,
+        facilityId: selectedFacility.id,
         vendorId: draftVendorId,
         items: draftLines.map((line) => ({
           productId: line.item.product_id,
+          sourcePurchaseOrderItemId: line.item.source_purchase_order_item_id,
           quantityOrdered: line.quantity,
         })),
       });
@@ -424,11 +467,13 @@ export const ProductCatalogList = ({
       <DraftOrderPanel
         actionResult={actionResult}
         draftLines={draftLines}
+        facilities={facilities}
         isPending={isPending}
         onCreateDraft={createDraft}
+        onFacilityChange={setSelectedFacilityId}
         onQuantityChange={setQuantity}
         onRemove={removeFromDraft}
-        primaryFacility={primaryFacility}
+        selectedFacilityId={selectedFacilityId}
       />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">

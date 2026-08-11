@@ -95,6 +95,7 @@ export const mapProductCatalogItem = (record: ProductCatalogRecord) => {
     metadataString(productMetadata, "image_source");
 
   return {
+    source_purchase_order_item_id: record.id,
     product_id: product?.id ?? record.product_id,
     sku: product?.sku ?? null,
     product_name:

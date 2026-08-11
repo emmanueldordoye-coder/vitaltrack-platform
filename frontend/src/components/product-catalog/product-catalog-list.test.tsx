@@ -38,6 +38,7 @@ const facility: Facility = {
 const makeCatalogItem = (
   overrides: Partial<ProductCatalogItem> = {},
 ): ProductCatalogItem => ({
+  source_purchase_order_item_id: "source-line-1",
   product_id: "product-1",
   sku: "DENTIRA-070367854",
   product_name: "Braval Nitrile PF Exam Gloves",
@@ -93,8 +94,8 @@ describe("ProductCatalogList draft order controls", () => {
 
     render(
       <ProductCatalogList
+        facilities={[facility]}
         items={[makeCatalogItem()]}
-        primaryFacility={facility}
       />,
     );
 
@@ -119,6 +120,7 @@ describe("ProductCatalogList draft order controls", () => {
         items: [
           {
             productId: "product-1",
+            sourcePurchaseOrderItemId: "source-line-1",
             quantityOrdered: 2,
           },
         ],
@@ -144,10 +146,12 @@ describe("ProductCatalogList draft order controls", () => {
   it("requires one supplier group before draft creation", () => {
     render(
       <ProductCatalogList
+        facilities={[facility]}
         items={[
           makeCatalogItem(),
           makeCatalogItem({
             product_id: "product-2",
+            source_purchase_order_item_id: "source-line-2",
             product_name: "Reli Disposable Safety Retractor Scalpel",
             supplier_name: "Another Supplier",
             vendor_id: "vendor-other",
@@ -155,7 +159,6 @@ describe("ProductCatalogList draft order controls", () => {
             last_known_unit_price: 13.75,
           }),
         ]}
-        primaryFacility={facility}
       />,
     );
 
@@ -174,8 +177,8 @@ describe("ProductCatalogList draft order controls", () => {
   it("does not show inventory state for PO-only catalog products", () => {
     render(
       <ProductCatalogList
+        facilities={[facility]}
         items={[makeCatalogItem()]}
-        primaryFacility={facility}
       />,
     );
 
@@ -184,5 +187,59 @@ describe("ProductCatalogList draft order controls", () => {
     expect(screen.queryByText(/^Reorder$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Location$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Low stock$/i)).not.toBeInTheDocument();
+  });
+
+  it("uses the explicitly selected facility for draft PO creation", async () => {
+    mockedCreateDraftPurchaseOrder.mockResolvedValue({
+      status: "success",
+      message:
+        "Draft PO created in VitalTrack. Supplier submission integration is not enabled in this demo environment.",
+      purchaseOrder: {
+        id: "po-draft",
+        facility_id: "facility-secondary",
+        supplier_id: null,
+        vendor_id: "vendor-patterson",
+        po_number: "VT-DRAFT-20260811-ABC12345",
+        po_date: "2026-08-11T12:00:00Z",
+        expected_delivery_date: null,
+        actual_delivery_date: null,
+        status: "draft",
+        total_amount: 7.83,
+        currency: "USD",
+        notes: null,
+        created_by: "user-1",
+        updated_by: "user-1",
+        created_at: null,
+        updated_at: null,
+      },
+    });
+
+    render(
+      <ProductCatalogList
+        facilities={[
+          facility,
+          {
+            ...facility,
+            id: "facility-secondary",
+            name: "Dentira Secondary Office",
+          },
+        ]}
+        items={[makeCatalogItem()]}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Facility"), {
+      target: { value: "facility-secondary" },
+    });
+    fireEvent.click(screen.getByText("Add to Draft"));
+    fireEvent.click(screen.getByTestId("draft-order-create"));
+
+    await waitFor(() => {
+      expect(mockedCreateDraftPurchaseOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          facilityId: "facility-secondary",
+        }),
+      );
+    });
   });
 });

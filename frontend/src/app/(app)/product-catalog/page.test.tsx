@@ -14,6 +14,7 @@ const mockedCreateServerApiClient = jest.mocked(createServerApiClient);
 const makeCatalogItem = (
   overrides: Partial<ProductCatalogItem> = {},
 ): ProductCatalogItem => ({
+  source_purchase_order_item_id: "source-line-1",
   product_id: "product-1",
   sku: "DENTIRA-070367854",
   product_name: "Braval Nitrile PF Exam Gloves",
@@ -56,6 +57,7 @@ describe("ProductCatalogPage", () => {
           vendor_item_number: "NXTHG5002CR",
           last_known_unit_price: 299.99,
           source_line_number: 8,
+          source_purchase_order_item_id: "source-line-2",
         }),
       ]),
       listFacilities: jest.fn().mockResolvedValue([
@@ -125,6 +127,7 @@ describe("ProductCatalogPage", () => {
         Array.from({ length: 42 }, (_, index) =>
           makeCatalogItem({
             product_id: `product-${index + 1}`,
+            source_purchase_order_item_id: `source-line-${index + 1}`,
             product_name: `Dentira Catalog Product ${index + 1}`,
             vendor_item_number: `ITEM-${String(index + 1).padStart(3, "0")}`,
             source_line_number: index + 1,
@@ -206,14 +209,15 @@ describe("ProductCatalogPage", () => {
 
   it("passes search through to the product catalog endpoint", async () => {
     const listProductCatalog = jest.fn().mockResolvedValue([]);
+    const listFacilities = jest.fn().mockResolvedValue([
+      {
+        id: "facility-dentira",
+        name: "Dentira Main Office",
+      },
+    ]);
     mockedCreateServerApiClient.mockResolvedValue({
       listProductCatalog,
-      listFacilities: jest.fn().mockResolvedValue([
-        {
-          id: "facility-dentira",
-          name: "Dentira Main Office",
-        },
-      ]),
+      listFacilities,
     } as never);
 
     render(
@@ -227,6 +231,9 @@ describe("ProductCatalogPage", () => {
     expect(listProductCatalog).toHaveBeenCalledWith({
       limit: 100,
       search: "NXTHG5002CR",
+    });
+    expect(listFacilities).toHaveBeenCalledWith({
+      limit: 25,
     });
     expect(screen.getByDisplayValue("NXTHG5002CR")).toBeInTheDocument();
     expect(

@@ -5,6 +5,7 @@ export interface DraftPurchaseOrderActionInput {
   vendorId: string;
   items: Array<{
     productId: string;
+    sourcePurchaseOrderItemId: string;
     quantityOrdered: number;
   }>;
 }

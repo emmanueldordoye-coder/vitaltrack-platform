@@ -19,6 +19,7 @@ export const purchaseOrderItemSchema = z.object({
 
 const createPurchaseOrderItemSchema = z.object({
   productId: uuidSchema,
+  sourcePurchaseOrderItemId: uuidSchema,
   quantityOrdered: z.number().int().positive().max(999),
 });
 

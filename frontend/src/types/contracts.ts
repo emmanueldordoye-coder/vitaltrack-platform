@@ -68,6 +68,7 @@ export interface InventoryCatalogItem {
 }
 
 export interface ProductCatalogItem {
+  source_purchase_order_item_id: string;
   product_id: string;
   sku: string | null;
   product_name: string | null;
@@ -243,6 +244,7 @@ export interface CreatePurchaseOrderInput {
   notes?: string;
   items?: Array<{
     productId: string;
+    sourcePurchaseOrderItemId: string;
     quantityOrdered: number;
   }>;
 }

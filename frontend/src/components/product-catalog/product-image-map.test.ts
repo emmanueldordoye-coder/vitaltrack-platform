@@ -8,6 +8,7 @@ const makeItem = (
   overrides: Partial<ProductCatalogItem> = {},
 ): ProductCatalogItem =>
   ({
+    source_purchase_order_item_id: "source-line-1",
     product_id: "product-1",
     sku: "DENTIRA-070367854",
     product_name: "Braval Nitrile PF Exam Gloves",
@@ -16,6 +17,7 @@ const makeItem = (
     manufacturer_part_number: null,
     brand_or_manufacturer: "Braval",
     supplier_name: "Patterson Dental Supply Inc",
+    vendor_id: "vendor-patterson",
     vendor_item_number: "070367854",
     last_known_unit_price: 7.83,
     currency: "USD",

@@ -224,19 +224,28 @@ const assertVendorBelongsToOrganization = async (
 const aggregateDraftItems = (
   items: NonNullable<CreatePurchaseOrderInput["items"]>,
 ) => {
-  const quantitiesByProduct = new Map<string, number>();
+  const quantitiesBySourceLine = new Map<
+    string,
+    {
+      productId: string;
+      sourcePurchaseOrderItemId: string;
+      quantityOrdered: number;
+    }
+  >();
 
   for (const item of items) {
-    quantitiesByProduct.set(
-      item.productId,
-      (quantitiesByProduct.get(item.productId) ?? 0) + item.quantityOrdered,
+    const existingLine = quantitiesBySourceLine.get(
+      item.sourcePurchaseOrderItemId,
     );
+    quantitiesBySourceLine.set(item.sourcePurchaseOrderItemId, {
+      productId: item.productId,
+      sourcePurchaseOrderItemId: item.sourcePurchaseOrderItemId,
+      quantityOrdered:
+        (existingLine?.quantityOrdered ?? 0) + item.quantityOrdered,
+    });
   }
 
-  return Array.from(quantitiesByProduct, ([productId, quantityOrdered]) => ({
-    productId,
-    quantityOrdered,
-  }));
+  return Array.from(quantitiesBySourceLine.values());
 };
 
 const resolveCatalogDraftItems = async ({
@@ -251,7 +260,9 @@ const resolveCatalogDraftItems = async ({
   items: NonNullable<CreatePurchaseOrderInput["items"]>;
 }) => {
   const draftItems = aggregateDraftItems(items);
-  const productIds = draftItems.map((item) => item.productId);
+  const sourceLineIds = draftItems.map(
+    (item) => item.sourcePurchaseOrderItemId,
+  );
 
   const { data, error } = await reqSupabase
     .from("purchase_order_items")
@@ -289,7 +300,7 @@ const resolveCatalogDraftItems = async ({
     .eq("products.organization_id", organizationId)
     .eq("purchase_orders.organization_id", organizationId)
     .eq("purchase_orders.vendor_id", vendorId)
-    .in("product_id", productIds)
+    .in("id", sourceLineIds)
     .is("deleted_at", null);
 
   if (error) {
@@ -299,29 +310,29 @@ const resolveCatalogDraftItems = async ({
     );
   }
 
-  const sourceByProduct = new Map<string, CatalogSourceRecord>();
+  const sourceByLineId = new Map<string, CatalogSourceRecord>();
   for (const record of (data ?? []) as CatalogSourceRecord[]) {
-    if (record.product_id && !sourceByProduct.has(record.product_id)) {
-      sourceByProduct.set(record.product_id, record);
+    if (!sourceByLineId.has(record.id)) {
+      sourceByLineId.set(record.id, record);
     }
   }
 
-  const missingProductIds = productIds.filter(
-    (productId) => !sourceByProduct.has(productId),
+  const missingSourceLineIds = sourceLineIds.filter(
+    (sourceLineId) => !sourceByLineId.has(sourceLineId),
   );
-  if (missingProductIds.length > 0) {
+  if (missingSourceLineIds.length > 0) {
     throw createBadRequestError(
       "Draft PO contains catalog products that are not available for this supplier and workspace.",
-      { productIds: missingProductIds },
+      { sourcePurchaseOrderItemIds: missingSourceLineIds },
     );
   }
 
   const inserts: PurchaseOrderItemInsert[] = [];
   let totalAmount = 0;
-  let currency = "USD";
+  let currency: string | null = null;
 
   for (const item of draftItems) {
-    const source = sourceByProduct.get(item.productId)!;
+    const source = sourceByLineId.get(item.sourcePurchaseOrderItemId)!;
     const product = firstRelated(source.products);
     const manufacturer = firstRelated(product?.manufacturers);
     const sourceOrder = firstRelated(source.purchase_orders);
@@ -330,6 +341,12 @@ const resolveCatalogDraftItems = async ({
     if (source.product_id === null || source.product_id !== item.productId) {
       throw createBadRequestError(
         "Draft PO contains an invalid catalog product mapping.",
+      );
+    }
+
+    if (product?.id !== item.productId) {
+      throw createBadRequestError(
+        "Draft PO contains a product that does not match the selected source line.",
       );
     }
 
@@ -346,7 +363,14 @@ const resolveCatalogDraftItems = async ({
       );
     }
 
-    currency = sourceOrder.currency ?? currency;
+    const sourceCurrency = (sourceOrder.currency ?? "USD").toUpperCase();
+    if (currency !== null && currency !== sourceCurrency) {
+      throw createBadRequestError(
+        "Draft PO products must use a single source-backed currency.",
+      );
+    }
+    currency = sourceCurrency;
+
     const lineTotal = roundCurrency(item.quantityOrdered * unitPrice);
     totalAmount = roundCurrency(totalAmount + lineTotal);
 
@@ -368,6 +392,7 @@ const resolveCatalogDraftItems = async ({
       status: "open",
       metadata: {
         source: "product_catalog_draft",
+        source_purchase_order_item_id: source.id,
         source_po_number: sourceOrder.po_number,
         source_line_number: metadataNumber(
           source.metadata,
@@ -399,7 +424,7 @@ const resolveCatalogDraftItems = async ({
   }
 
   return {
-    currency,
+    currency: currency ?? "USD",
     totalAmount,
     items: inserts,
   };
@@ -636,7 +661,7 @@ purchaseOrdersRouter.post(
             supplier_submission_enabled: false,
             supplier_submission_message: DRAFT_SUPPLIER_SUBMISSION_MESSAGE,
           }
-        : null,
+        : {},
       created_by: req.context.user?.id ?? null,
       updated_by: req.context.user?.id ?? null,
     };
