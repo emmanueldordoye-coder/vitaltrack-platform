@@ -68,6 +68,33 @@ describe("VitalTrackApiClient", () => {
     );
   });
 
+  it("requests the product catalog with search and limit parameters", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeSuccessPayload([]),
+    } as Response);
+
+    const client = new VitalTrackApiClient(
+      "token123",
+      "http://localhost:4000/api/v1",
+    );
+    const catalog = await client.listProductCatalog({
+      search: "braval",
+      limit: 100,
+    });
+
+    expect(catalog).toEqual([]);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining("/product-catalog?search=braval&limit=100"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer token123",
+        }),
+      }),
+    );
+  });
+
   it("classifies backend network or CORS failures without exposing the bearer token", async () => {
     jest
       .spyOn(global, "fetch")

@@ -67,6 +67,27 @@ export interface InventoryCatalogItem {
   is_low_stock: boolean;
 }
 
+export interface ProductCatalogItem {
+  product_id: string;
+  sku: string | null;
+  product_name: string | null;
+  product_description: string | null;
+  raw_description: string | null;
+  manufacturer_part_number: string | null;
+  brand_or_manufacturer: string | null;
+  supplier_name: string | null;
+  vendor_item_number: string | null;
+  last_known_unit_price: number | null;
+  currency: string | null;
+  source_po_number: string | null;
+  source_order_number: string | null;
+  source_order_date: string | null;
+  source_line_number: number | null;
+  image_reference: string | null;
+  image_source_page: string | null;
+  image_strategy: "source-screenshot-reference" | "neutral-placeholder";
+}
+
 export interface LegacyInventoryItem {
   id: string;
   organization_id: string;
@@ -170,6 +191,11 @@ export interface CreateFacilityInput {
 export interface ListInventoryQuery {
   category?: string;
   isActive?: boolean;
+  search?: string;
+  limit?: number;
+}
+
+export interface ListProductCatalogQuery {
   search?: string;
   limit?: number;
 }

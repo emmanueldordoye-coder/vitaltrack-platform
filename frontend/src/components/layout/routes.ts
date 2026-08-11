@@ -2,6 +2,7 @@ export const supportedNavigation = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/facilities", label: "Facilities" },
   { href: "/inventory", label: "Inventory" },
+  { href: "/product-catalog", label: "Product Catalog" },
   { href: "/purchase-orders", label: "Purchase Orders" },
 ] as const;
 

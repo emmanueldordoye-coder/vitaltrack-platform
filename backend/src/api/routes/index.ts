@@ -5,6 +5,7 @@ import { requireAuthenticatedUser } from "../middleware/require-auth.js";
 import { sendSuccess } from "../response.js";
 import { facilitiesRouter } from "./facilities.js";
 import { inventoryRouter } from "./inventory.js";
+import { productCatalogRouter } from "./product-catalog.js";
 import { purchaseOrdersRouter } from "./purchase-orders.js";
 
 export const apiRouter = Router();
@@ -24,6 +25,7 @@ apiRouter.get("/health", (req, res) => {
 protectedRouter.use(requireAuthenticatedUser);
 protectedRouter.use("/facilities", facilitiesRouter);
 protectedRouter.use("/inventory", inventoryRouter);
+protectedRouter.use("/product-catalog", productCatalogRouter);
 protectedRouter.use("/purchase-orders", purchaseOrdersRouter);
 
 apiRouter.use(protectedRouter);
