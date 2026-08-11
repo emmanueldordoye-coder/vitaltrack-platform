@@ -141,8 +141,8 @@ BEGIN
       updated_at = CURRENT_TIMESTAMP
     RETURNING id INTO new_suggested_order_id;
 
-    DELETE FROM suggested_order_items
-    WHERE suggested_order_id = new_suggested_order_id;
+    DELETE FROM suggested_order_items soi
+    WHERE soi.suggested_order_id = new_suggested_order_id;
 
     INSERT INTO suggested_order_items (
       suggested_order_id,
