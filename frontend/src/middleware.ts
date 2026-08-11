@@ -5,7 +5,13 @@ import { NextResponse } from "next/server";
 
 import { env } from "@/lib/env";
 
-const appPaths = ["/dashboard", "/facilities", "/inventory", "/purchase-orders"];
+const appPaths = [
+  "/dashboard",
+  "/facilities",
+  "/inventory",
+  "/product-catalog",
+  "/purchase-orders",
+];
 
 const isAppPath = (pathname: string) =>
   appPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));

@@ -737,3 +737,241 @@ test("GET /api/v1/purchase-orders/:id returns 404 when RLS hides another tenant'
   assert.equal(response.status, 404);
   assert.equal(response.body.error.code, "NOT_FOUND");
 });
+
+test("GET /api/v1/product-catalog maps PO-backed product identity without inventory fields", async () => {
+  let observedFilters: QueryState["filters"] = [];
+
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      supabase: createFakeSupabase({
+        purchase_order_items: (state) => {
+          observedFilters = state.filters;
+
+          return {
+            data: [
+              {
+                id: "poi-1",
+                purchase_order_id: "po-1",
+                inventory_item_id: null,
+                organization_id: "org-dentira",
+                product_id: "product-1",
+                suggested_order_item_id: null,
+                quantity_ordered: 2,
+                quantity_received: 0,
+                unit_price: 7.83,
+                line_total: 15.66,
+                uom: "order-unit",
+                notes:
+                  "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+                status: "open",
+                metadata: {
+                  source: "dentira_po_ptu317717",
+                  source_line_number: 1,
+                  raw_product_description:
+                    "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg | Braval | 070367854",
+                  normalized_product_name:
+                    "Braval Nitrile PF Exam Gloves, Lavender Blue, Small",
+                  brand_or_manufacturer: "Braval",
+                  vendor_item_number: "070367854",
+                  image_source: "IMG_4093.PNG",
+                  image_source_page: "1/4",
+                },
+                created_at: "2026-07-01T00:00:00Z",
+                updated_at: "2026-07-01T00:00:00Z",
+                deleted_at: null,
+                products: {
+                  id: "product-1",
+                  sku: "DENTIRA-PTU317717-001",
+                  name: "Braval Nitrile PF Exam Gloves, Lavender Blue, Small",
+                  description:
+                    "Braval Nitrile PF Exam Gloves – Powder Free Lavender Blue Small 300/Pkg",
+                  manufacturer_part_number: "070367854",
+                  brand_name: "Braval",
+                  metadata: {
+                    vendor_item_number: "070367854",
+                  },
+                  manufacturers: {
+                    id: "manufacturer-1",
+                    name: "Braval",
+                  },
+                },
+                purchase_orders: {
+                  id: "po-1",
+                  po_number: "PTU317717",
+                  po_date: "2026-06-12T00:00:00Z",
+                  confirmation_number: null,
+                  currency: "USD",
+                  metadata: {
+                    supplier: "PATTERSON DENTAL SUPPLY INC",
+                    dentira_order_number: "6209555669",
+                  },
+                  vendors: {
+                    id: "vendor-1",
+                    name: "Patterson Dental Supply Inc",
+                    vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+                  },
+                },
+              },
+            ],
+            error: null,
+          };
+        },
+      }),
+    }),
+  });
+
+  const response = await supertest(app).get("/api/v1/product-catalog");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    observedFilters.filter((filter) => filter.type === "eq"),
+    [
+      { type: "eq", column: "organization_id", value: "org-dentira" },
+      { type: "eq", column: "products.organization_id", value: "org-dentira" },
+      {
+        type: "eq",
+        column: "purchase_orders.organization_id",
+        value: "org-dentira",
+      },
+    ],
+  );
+  assert.equal(response.body.data[0].product_id, "product-1");
+  assert.equal(response.body.data[0].source_po_number, "PTU317717");
+  assert.equal(response.body.data[0].source_order_number, "6209555669");
+  assert.equal(
+    response.body.data[0].supplier_name,
+    "Patterson Dental Supply Inc",
+  );
+  assert.equal(response.body.data[0].vendor_item_number, "070367854");
+  assert.equal(response.body.data[0].brand_or_manufacturer, "Braval");
+  assert.equal(response.body.data[0].last_known_unit_price, 7.83);
+  assert.equal(
+    response.body.data[0].image_strategy,
+    "source-screenshot-reference",
+  );
+  assert.equal("current_quantity" in response.body.data[0], false);
+  assert.equal("par_level" in response.body.data[0], false);
+  assert.equal("reorder_point" in response.body.data[0], false);
+  assert.equal("is_low_stock" in response.body.data[0], false);
+});
+
+test("GET /api/v1/product-catalog searches source-backed product identity fields", async () => {
+  const app = createApp({
+    requestContextMiddleware: createRequestContextMiddleware({
+      organizationId: "org-dentira",
+      supabase: createFakeSupabase({
+        purchase_order_items: () => ({
+          data: [
+            {
+              id: "poi-1",
+              purchase_order_id: "po-1",
+              inventory_item_id: null,
+              organization_id: "org-dentira",
+              product_id: "product-1",
+              suggested_order_item_id: null,
+              quantity_ordered: 1,
+              quantity_received: 0,
+              unit_price: 299.99,
+              line_total: 299.99,
+              uom: "order-unit",
+              notes: "Solmetex NXT Hg5 Collection Container With Recycle Kit",
+              status: "open",
+              metadata: {
+                source_line_number: 8,
+                vendor_item_number: "NXTHG5002CR",
+                brand_or_manufacturer: "Solmetex",
+              },
+              created_at: null,
+              updated_at: null,
+              deleted_at: null,
+              products: {
+                id: "product-1",
+                sku: "DENTIRA-PTU317717-008",
+                name: "Solmetex NXT Hg5 Collection Container With Recycle Kit",
+                description: null,
+                manufacturer_part_number: "NXTHG5002CR",
+                brand_name: "Solmetex",
+                metadata: {},
+                manufacturers: null,
+              },
+              purchase_orders: {
+                id: "po-1",
+                po_number: "PTU317717",
+                po_date: "2026-06-12T00:00:00Z",
+                confirmation_number: null,
+                currency: "USD",
+                metadata: {
+                  supplier: "PATTERSON DENTAL SUPPLY INC",
+                },
+                vendors: {
+                  id: "vendor-1",
+                  name: "Patterson Dental Supply Inc",
+                  vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+                },
+              },
+            },
+            {
+              id: "poi-2",
+              purchase_order_id: "po-1",
+              inventory_item_id: null,
+              organization_id: "org-dentira",
+              product_id: "product-2",
+              suggested_order_item_id: null,
+              quantity_ordered: 1,
+              quantity_received: 0,
+              unit_price: 13.75,
+              line_total: 13.75,
+              uom: "order-unit",
+              notes: "Reli Disposable Safety Retractor Scalpel #15",
+              status: "open",
+              metadata: {
+                source_line_number: 42,
+                vendor_item_number: "6008TR15",
+                brand_or_manufacturer: "Myco",
+              },
+              created_at: null,
+              updated_at: null,
+              deleted_at: null,
+              products: {
+                id: "product-2",
+                sku: "DENTIRA-PTU317717-042",
+                name: "Reli Disposable Safety Retractor Scalpel #15 Sterile",
+                description: null,
+                manufacturer_part_number: "6008TR15",
+                brand_name: "Myco",
+                metadata: {},
+                manufacturers: null,
+              },
+              purchase_orders: {
+                id: "po-1",
+                po_number: "PTU317717",
+                po_date: "2026-06-12T00:00:00Z",
+                confirmation_number: null,
+                currency: "USD",
+                metadata: null,
+                vendors: {
+                  id: "vendor-1",
+                  name: "Patterson Dental Supply Inc",
+                  vendor_code: "PATTERSON_DENTAL_SUPPLY_INC",
+                },
+              },
+            },
+          ],
+          error: null,
+        }),
+      }),
+    }),
+  });
+
+  const response = await supertest(app).get(
+    "/api/v1/product-catalog?search=NXTHG5002CR",
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.length, 1);
+  assert.equal(
+    response.body.data[0].product_name,
+    "Solmetex NXT Hg5 Collection Container With Recycle Kit",
+  );
+});

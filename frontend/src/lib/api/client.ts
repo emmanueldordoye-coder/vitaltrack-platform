@@ -10,7 +10,9 @@ import type {
   LegacyInventoryItem,
   ListFacilitiesQuery,
   ListInventoryQuery,
+  ListProductCatalogQuery,
   ListPurchaseOrdersQuery,
+  ProductCatalogItem,
   PurchaseOrder,
   PurchaseOrderDetail,
 } from "@/types/contracts";
@@ -157,6 +159,16 @@ export class VitalTrackApiClient {
       path: "/inventory",
       method: "POST",
       body: input,
+    });
+  }
+
+  listProductCatalog(query: ListProductCatalogQuery = {}) {
+    return this.request<ProductCatalogItem[]>({
+      path: "/product-catalog",
+      query: {
+        search: query.search,
+        limit: query.limit ?? 100,
+      },
     });
   }
 
