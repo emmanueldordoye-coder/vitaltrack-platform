@@ -79,6 +79,7 @@ productCatalogRouter.get(
       .eq("organization_id", req.context.organizationId!)
       .eq("products.organization_id", req.context.organizationId!)
       .eq("purchase_orders.organization_id", req.context.organizationId!)
+      .neq("purchase_orders.status", "draft")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(limit)) as {

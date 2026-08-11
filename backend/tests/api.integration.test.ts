@@ -66,6 +66,11 @@ class FakeQueryBuilder implements PromiseLike<QueryResult> {
     return this;
   }
 
+  public neq(column: string, value: unknown) {
+    this.state.filters.push({ type: "neq", column, value });
+    return this;
+  }
+
   public is(column: string, value: unknown) {
     this.state.filters.push({ type: "is", column, value });
     return this;
@@ -1334,6 +1339,13 @@ test("GET /api/v1/product-catalog maps PO-backed product identity without invent
         value: "org-dentira",
       },
     ],
+  );
+  assert.deepEqual(
+    observedFilters.find(
+      (filter) =>
+        filter.type === "neq" && filter.column === "purchase_orders.status",
+    ),
+    { type: "neq", column: "purchase_orders.status", value: "draft" },
   );
   assert.equal(response.body.data[0].product_id, "product-1");
   assert.equal(response.body.data[0].source_po_number, "PTU317717");
