@@ -18,6 +18,12 @@ describe("customer presentation context", () => {
     expect(formatCustomerFacilityLabel(null)).toBe("PDS Health pilot site");
   });
 
+  it("keeps non-primary Dentira fixture facilities distinguishable", () => {
+    expect(formatCustomerFacilityLabel("Dentira Secondary Office")).toBe(
+      "PDS Health Secondary Office",
+    );
+  });
+
   it("preserves non-Dentira labels from real workspace data", () => {
     expect(formatCustomerWorkspaceLabel("Austin Operations")).toBe(
       "Austin Operations",
