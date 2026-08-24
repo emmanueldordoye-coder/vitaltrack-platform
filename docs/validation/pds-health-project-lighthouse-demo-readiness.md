@@ -71,6 +71,11 @@ This document records the controlled MVP correction that reframes the validated 
 
 - Main SHA before correction: bcb984ced35636cbcbe79c53e9b169aefb0d67ab
 - Correction branch: feat/pds-health-demo-framing
-- Staging URL: pending
-- Staging deployment run: pending
+- Correction commit: 9d75667fdf71e2f54ad639f6bfac423585d20028
+- Pull request: https://github.com/emmanueldordoye-coder/vitaltrack-platform/pull/24
+- CI: passing
+- Vercel Preview: passing
+- Manual staging deployment run: https://github.com/emmanueldordoye-coder/vitaltrack-platform/actions/runs/32755203781
+- Staging deployment result: blocked before preview deployment because the GitHub staging environment secret `VERCEL_TOKEN` was rejected by Vercel authentication.
+- Staging URL: not produced by the failed manual staging run
 - Production touched: no
