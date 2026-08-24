@@ -26,19 +26,19 @@ const authErrorMessages: Record<
     category: "wrong_supabase_project",
     title: "Workspace connection needs attention",
     message:
-      "Your account is signed in, but VitalTrack could not connect it to the Dentira workspace. Sign out, then sign back in. If this continues, contact support.",
+      "Your account is signed in, but VitalTrack could not connect it to the PDS Health workspace. Sign out, then sign back in. If this continues, contact support.",
   },
   AUTH_WORKSPACE_LOOKUP_FAILED: {
     category: "workspace_lookup_failed",
     title: "Workspace access needs attention",
     message:
-      "VitalTrack could not load the Dentira workspace for this session. Sign out, then sign back in. If this continues, contact support.",
+      "VitalTrack could not load the PDS Health workspace for this session. Sign out, then sign back in. If this continues, contact support.",
   },
   AUTH_ORGANIZATION_REQUIRED: {
     category: "no_organization_membership",
     title: "Workspace access required",
     message:
-      "This user is signed in, but is not assigned to an active Dentira workspace yet. Ask an administrator to add workspace access, then sign out and sign back in.",
+      "This user is signed in, but is not assigned to an active PDS Health workspace yet. Ask an administrator to add workspace access, then sign out and sign back in.",
   },
 };
 
@@ -58,7 +58,7 @@ export const BackendAuthError = ({ error }: { error: ApiClientError }) => {
     <section className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-slate-900">
-          Dentira workspace
+          PDS Health Workspace
         </h1>
         <p className="mt-1 text-sm text-slate-600">
           VitalTrack could not finish loading the workspace for this signed-in

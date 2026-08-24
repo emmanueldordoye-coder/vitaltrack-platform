@@ -60,13 +60,13 @@ export const InventoryCatalog = ({
       <header className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-            Dentira inventory
+            PDS Health inventory
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
             Inventory Catalog
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Track Dentira supply quantities, reorder points, storage locations,
+            Track PDS Health supply quantities, reorder points, storage locations,
             and Patterson Dental vendor context.
           </p>
         </div>

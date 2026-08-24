@@ -1,4 +1,5 @@
 import { StatCard } from "@/components/dashboard/stat-card";
+import { formatCustomerWorkspaceLabel } from "@/lib/presentation/customer-context";
 import type {
   Facility,
   InventoryCatalogItem,
@@ -18,7 +19,7 @@ export const DashboardOverview = ({
 }: DashboardOverviewProps) => {
   const lowStockCount = inventoryItems.filter((item) => item.is_low_stock).length;
   const lowStockNoun = lowStockCount === 1 ? "product is" : "products are";
-  const workspaceName = facilities[0]?.name ?? "Dentira workspace";
+  const workspaceName = formatCustomerWorkspaceLabel(facilities[0]?.name);
   const facilityDescription =
     facilities.length === 1
       ? workspaceName
@@ -29,7 +30,7 @@ export const DashboardOverview = ({
       <header className="flex flex-col justify-between gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-            Dentira supply workspace
+            PDS Health supply workspace
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
             Dashboard
@@ -163,7 +164,7 @@ export const DashboardOverview = ({
             <div>
               <dt className="text-slate-500">Inventory view</dt>
               <dd className="mt-1 font-semibold text-slate-900">
-                Dentira supply catalog
+                PDS Health supply catalog
               </dd>
             </div>
             <div>

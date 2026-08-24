@@ -15,7 +15,7 @@ describe("PurchaseOrdersPage", () => {
     jest.resetAllMocks();
   });
 
-  it("renders an honest empty state when Dentira has no purchase orders", async () => {
+  it("renders an honest empty state when the workspace has no purchase orders", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listPurchaseOrders: jest.fn().mockResolvedValue([]),
     } as never);
@@ -23,7 +23,7 @@ describe("PurchaseOrdersPage", () => {
     render(await PurchaseOrdersPage());
 
     expect(screen.getByText("Purchase Orders")).toBeInTheDocument();
-    expect(screen.getByText("Dentira purchasing")).toBeInTheDocument();
+    expect(screen.getByText("PDS Health purchasing")).toBeInTheDocument();
     expect(screen.getByText("Total orders")).toBeInTheDocument();
     expect(
       within(
@@ -42,7 +42,7 @@ describe("PurchaseOrdersPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("No purchase orders listed")).toBeInTheDocument();
     expect(
-      screen.getByText(/No purchase orders are currently listed for Dentira/i),
+      screen.getByText(/No purchase orders are currently listed for this workspace/i),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("purchase-order-row")).not.toBeInTheDocument();
     expect(

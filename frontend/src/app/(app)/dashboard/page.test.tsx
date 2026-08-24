@@ -51,7 +51,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Inventory rows")).toBeInTheDocument();
     expect(screen.getByText("Low-stock items")).toBeInTheDocument();
     expect(screen.getByText("Purchase orders")).toBeInTheDocument();
-    expect(screen.getAllByText("Dentira Main Office")).toHaveLength(3);
+    expect(screen.getAllByText("PDS Health Workspace")).toHaveLength(3);
     expect(screen.getAllByText("1")).toHaveLength(2);
     expect(screen.getAllByText("2")).toHaveLength(1);
   });
@@ -167,7 +167,7 @@ describe("DashboardPage", () => {
       screen.getByText("Workspace access required"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/not assigned to an active Dentira workspace/i),
+      screen.getByText(/not assigned to an active PDS Health workspace/i),
     ).toBeInTheDocument();
   });
 
@@ -191,7 +191,7 @@ describe("DashboardPage", () => {
       screen.getByText("Workspace access needs attention"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/could not load the Dentira workspace/i),
+      screen.getByText(/could not load the PDS Health workspace/i),
     ).toBeInTheDocument();
   });
 });

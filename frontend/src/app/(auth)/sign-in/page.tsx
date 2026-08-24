@@ -17,13 +17,13 @@ export default function SignInPage() {
 
         <div className="mt-12 max-w-md lg:mt-0">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-            Dentira operations workspace
+            PDS Health operations workspace
           </p>
           <h1 className="mt-3 text-4xl font-bold tracking-normal">
             Supply ordering, ready for the day.
           </h1>
           <p className="mt-4 text-sm leading-6 text-[#C6D4EA]">
-            Access the secure Dentira workspace for inventory visibility,
+            Access the secure PDS Health workspace for inventory visibility,
             facility context, and purchase-order review.
           </p>
         </div>
@@ -33,7 +33,9 @@ export default function SignInPage() {
             <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/45">
               Workspace
             </dt>
-            <dd className="mt-1 font-semibold text-white">Dentira Main Office</dd>
+            <dd className="mt-1 font-semibold text-white">
+              PDS Health Workspace
+            </dd>
           </div>
           <div className="rounded-md border border-white/10 bg-white/5 px-3 py-3">
             <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/45">
@@ -60,7 +62,7 @@ export default function SignInPage() {
               Sign in
             </h2>
             <p className="text-sm leading-6 text-slate-600">
-              Enter your VitalTrack credentials to continue to the Dentira
+              Enter your VitalTrack credentials to continue to the PDS Health
               supply workspace.
             </p>
           </div>
