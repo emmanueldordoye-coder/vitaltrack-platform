@@ -125,14 +125,14 @@ export const PurchaseOrdersList = ({
     <section className="space-y-5">
       <header className="rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-          Dentira purchasing
+          PDS Health purchasing
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
           Purchase Orders
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Review Dentira purchase order records currently available from
-          verified purchasing evidence.
+          Review purchase order records currently available from verified
+          Dentira/Patterson purchasing evidence.
         </p>
       </header>
 
@@ -184,12 +184,12 @@ export const PurchaseOrdersList = ({
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-base font-bold text-slate-900">
-            Dentira purchase orders
+            PDS Health purchase orders
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Totals and line counts reflect source-backed Dentira purchasing
-            records. Shipping, tax, and fulfillment details are shown only when
-            available.
+            Totals and line counts reflect source-backed Dentira/Patterson
+            purchasing records. Shipping, tax, and fulfillment details are shown
+            only when available.
           </p>
         </div>
 
@@ -202,9 +202,9 @@ export const PurchaseOrdersList = ({
               No purchase orders listed
             </p>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-              No purchase orders are currently listed for Dentira. When orders
-              are available, this table will show the source-backed PO number,
-              supplier, total, and order date.
+              No purchase orders are currently listed for this workspace. When
+              orders are available, this table will show the source-backed PO
+              number, supplier, total, and order date.
             </p>
           </div>
         ) : (
@@ -275,9 +275,9 @@ export const PurchaseOrdersList = ({
                                 Source-backed order lines
                               </p>
                               <p className="mt-1 text-xs text-slate-500">
-                                Quantities and prices come from Dentira order
-                                details. These lines do not create inventory
-                                quantities.
+                                Quantities and prices come from Dentira/Patterson
+                                order details. These lines do not create
+                                inventory quantities.
                               </p>
                             </div>
                             <div className="max-h-[560px] overflow-auto">

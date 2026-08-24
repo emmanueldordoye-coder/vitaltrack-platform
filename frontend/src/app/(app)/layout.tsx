@@ -4,10 +4,14 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { VitalTrackApiClient } from "@/lib/api/client";
 import { getServerSessionUser } from "@/lib/auth/session";
+import {
+  formatCustomerWorkspaceLabel,
+  PDS_HEALTH_WORKSPACE_LABEL,
+} from "@/lib/presentation/customer-context";
 
 import { signOutAction } from "./actions";
 
-const fallbackWorkspaceLabel = "Dentira workspace";
+const fallbackWorkspaceLabel = PDS_HEALTH_WORKSPACE_LABEL;
 
 const getWorkspaceLabel = async (accessToken: string) => {
   try {
@@ -17,7 +21,7 @@ const getWorkspaceLabel = async (accessToken: string) => {
       limit: 1,
     });
 
-    return facilities[0]?.name ?? fallbackWorkspaceLabel;
+    return formatCustomerWorkspaceLabel(facilities[0]?.name);
   } catch {
     return fallbackWorkspaceLabel;
   }

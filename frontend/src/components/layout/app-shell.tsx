@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { NavLinks } from "@/components/layout/nav-links";
 import { ShellHeader } from "@/components/layout/shell-header";
+import { PDS_HEALTH_WORKSPACE_LABEL } from "@/lib/presentation/customer-context";
 
 const getInitials = (email: string) => {
   const localPart = email.split("@")[0] || "user";
@@ -17,7 +18,7 @@ const getInitials = (email: string) => {
 export function AppShell({
   children,
   userEmail,
-  workspaceLabel = "Dentira workspace",
+  workspaceLabel = PDS_HEALTH_WORKSPACE_LABEL,
   signOutAction,
 }: {
   children: ReactNode;

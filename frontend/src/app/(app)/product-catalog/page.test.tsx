@@ -71,7 +71,7 @@ describe("ProductCatalogPage", () => {
     render(await ProductCatalogPage({}));
 
     expect(screen.getByText("Product Catalog")).toBeInTheDocument();
-    expect(screen.getByText("Dentira product catalog")).toBeInTheDocument();
+    expect(screen.getByText("PDS Health product catalog")).toBeInTheDocument();
     expect(
       within(
         screen.getByTestId("product-catalog-summary-products-shown"),
@@ -92,7 +92,7 @@ describe("ProductCatalogPage", () => {
     expect(screen.getAllByText("Seen in PO PTU317717")).toHaveLength(2);
     expect(screen.getAllByTestId("product-catalog-row")).toHaveLength(2);
     expect(screen.getByText("Draft Purchase Order")).toBeInTheDocument();
-    expect(screen.getByText("Dentira Main Office")).toBeInTheDocument();
+    expect(screen.getByText("PDS Health pilot site")).toBeInTheDocument();
     expect(screen.getAllByText("Add to Draft")).toHaveLength(2);
     expect(
       screen.getByAltText(

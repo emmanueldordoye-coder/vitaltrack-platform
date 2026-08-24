@@ -102,7 +102,7 @@ export class VitalTrackApiClient {
       });
     } catch {
       throw new ApiClientError({
-        message: "Unable to reach the staging backend API.",
+        message: "Unable to reach VitalTrack services.",
         code: "API_NETWORK_OR_CORS_ERROR",
         status: 0,
       });

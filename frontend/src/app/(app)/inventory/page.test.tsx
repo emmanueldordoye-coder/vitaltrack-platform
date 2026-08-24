@@ -37,7 +37,7 @@ describe("InventoryPage", () => {
     jest.resetAllMocks();
   });
 
-  it("renders Dentira inventory rows with summary counts", async () => {
+  it("renders inventory rows with summary counts", async () => {
     mockedCreateServerApiClient.mockResolvedValue({
       listInventoryItems: jest.fn().mockResolvedValue(
         Array.from({ length: 7 }, (_, index) =>

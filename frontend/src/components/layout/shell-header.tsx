@@ -3,9 +3,10 @@
 import { usePathname } from "next/navigation";
 
 import { getRouteLabel } from "@/components/layout/routes";
+import { PDS_HEALTH_WORKSPACE_LABEL } from "@/lib/presentation/customer-context";
 
 export const ShellHeader = ({
-  workspaceLabel = "Dentira workspace",
+  workspaceLabel = PDS_HEALTH_WORKSPACE_LABEL,
 }: {
   workspaceLabel?: string;
 }) => {

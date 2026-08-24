@@ -43,8 +43,8 @@ describe("FacilitiesPage", () => {
 
     const facilityRow = screen.getByTestId("facility-row");
 
-    expect(screen.getByText("Dentira workspace")).toBeInTheDocument();
-    expect(within(facilityRow).getByText("Dentira Main Office")).toBeInTheDocument();
+    expect(screen.getByText("PDS Health workspace")).toBeInTheDocument();
+    expect(within(facilityRow).getByText("PDS Health pilot site")).toBeInTheDocument();
     expect(screen.getByText("Dental Office")).toBeInTheDocument();
     expect(screen.getByText("Austin, TX")).toBeInTheDocument();
     expect(screen.getByText("America/Chicago")).toBeInTheDocument();

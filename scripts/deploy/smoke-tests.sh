@@ -152,6 +152,11 @@ if [[ -n "${EXPECTED_GIT_SHA:-}" ]]; then
   verify_git_sha "frontend" "$APP_BASE_URL/api/health" "$EXPECTED_GIT_SHA" "${frontend_curl_args[@]+"${frontend_curl_args[@]}"}"
 fi
 
+if [[ -n "${EXPECTED_GIT_SHA:-}" ]]; then
+  echo "Smoke test: backend git SHA"
+  wait_for_git_sha "backend" "$API_BASE_URL/api/v1/health" "$EXPECTED_GIT_SHA"
+fi
+
 echo "Smoke test: protected facilities endpoint denies unauthenticated requests"
 body_file="$(mktemp)"
 curl_request "unauthenticated facilities endpoint" "$API_BASE_URL/api/v1/facilities" "$body_file"
@@ -160,11 +165,6 @@ rm -f "$body_file"
 if [[ "$status_code" != "401" && "$status_code" != "403" ]]; then
   echo "Expected 401/403 from unauthenticated facilities endpoint, got $status_code." >&2
   exit 1
-fi
-
-if [[ -n "${EXPECTED_GIT_SHA:-}" ]]; then
-  echo "Smoke test: backend git SHA"
-  wait_for_git_sha "backend" "$API_BASE_URL/api/v1/health" "$EXPECTED_GIT_SHA"
 fi
 
 if [[ -n "${HEALTHCHECK_BEARER_TOKEN:-}" ]]; then

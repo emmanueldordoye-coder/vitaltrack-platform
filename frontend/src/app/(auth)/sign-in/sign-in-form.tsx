@@ -64,7 +64,7 @@ export const SignInForm = ({ action, initialState }: SignInFormProps) => {
       <FormMessage status={state.status} message={state.message} />
       <SubmitButton />
       <p className="text-center text-xs leading-5 text-slate-500">
-        Secure access for authorized Dentira operations users.
+        Secure access for authorized PDS Health operations users.
       </p>
     </form>
   );

@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { createDraftPurchaseOrder } from "@/app/(app)/product-catalog/actions";
 import type { DraftPurchaseOrderActionResult } from "@/app/(app)/product-catalog/action-types";
+import { formatCustomerFacilityLabel } from "@/lib/presentation/customer-context";
 import type { Facility, ProductCatalogItem } from "@/types/contracts";
 import { ProductThumbnail } from "./product-thumbnail";
 
@@ -172,13 +173,15 @@ const DraftOrderPanel = ({
             >
               {facilities.map((facility) => (
                 <option key={facility.id} value={facility.id}>
-                  {facility.name}
+                  {formatCustomerFacilityLabel(facility.name)}
                 </option>
               ))}
             </select>
           ) : (
             <p className="mt-1 font-bold text-slate-900">
-              {selectedFacility?.name ?? "No facility available"}
+              {selectedFacility
+                ? formatCustomerFacilityLabel(selectedFacility.name)
+                : "No facility available"}
             </p>
           )}
         </div>
@@ -406,15 +409,15 @@ export const ProductCatalogList = ({
       <header className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-            Dentira product catalog
+            PDS Health product catalog
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
             Product Catalog
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Browse source-backed Dentira products found in verified Patterson
-            Dental purchasing records. Catalog products are shown separately
-            from current inventory counts.
+            Browse products found in verified Dentira/Patterson purchasing
+            records for the PDS Health demo. Catalog products are shown
+            separately from current inventory counts.
           </p>
         </div>
 

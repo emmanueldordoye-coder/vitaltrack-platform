@@ -24,18 +24,18 @@ describe("SignInPage", () => {
     jest.resetAllMocks();
   });
 
-  it("renders the Dentira sign-in form with customer-safe copy", () => {
+  it("renders the PDS Health sign-in form with customer-safe copy", () => {
     render(<SignInPage />);
 
     expect(screen.getByText("VitalTrack")).toBeInTheDocument();
-    expect(screen.getByText("Dentira operations workspace")).toBeInTheDocument();
+    expect(screen.getByText("PDS Health operations workspace")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         name: "Supply ordering, ready for the day.",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/continue to the Dentira supply workspace/i),
+      screen.getByText(/continue to the PDS Health supply workspace/i),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();

@@ -1,4 +1,5 @@
 import type { Facility } from "@/types/contracts";
+import { formatCustomerFacilityLabel } from "@/lib/presentation/customer-context";
 
 interface FacilitiesListProps {
   facilities: Facility[];
@@ -72,13 +73,13 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
     <section className="space-y-5">
       <header className="rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-lighthouse-accent">
-          Dentira workspace
+          PDS Health workspace
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-normal text-lighthouse-primary">
           Facilities
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Review the care-site details assigned to the Dentira workspace,
+          Review the care-site details assigned to the PDS Health workspace,
           including location, timezone, and active status.
         </p>
       </header>
@@ -101,15 +102,19 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
         />
         <SummaryCard
           label="Primary site"
-          value={primaryFacility?.name ?? "Not set"}
-          description="Main Dentira operating location"
+          value={
+            primaryFacility
+              ? formatCustomerFacilityLabel(primaryFacility.name)
+              : "Not set"
+          }
+          description="Primary location for this demo workspace"
         />
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-base font-bold text-slate-900">
-            Dentira facility directory
+            PDS Health facility directory
           </h2>
           <p className="mt-1 text-sm text-slate-500">
             Facility details come from the current authenticated organization.
@@ -140,10 +145,10 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
               >
                 <div>
                   <p className="text-base font-bold text-slate-900">
-                    {facility.name}
+                    {formatCustomerFacilityLabel(facility.name)}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    Assigned Dentira location
+                    Assigned PDS Health location
                   </p>
                 </div>
 
@@ -193,7 +198,7 @@ export const FacilitiesList = ({ facilities }: FacilitiesListProps) => {
       </div>
 
       <p className="text-sm leading-6 text-slate-500">
-        This view focuses on the Dentira facility details currently assigned to
+        This view focuses on the PDS Health facility details currently assigned to
         the workspace.
       </p>
     </section>
